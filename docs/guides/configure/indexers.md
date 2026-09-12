@@ -60,7 +60,7 @@ Example from NZBGeek:
 
 1. Go to **Settings > Integrations > Indexers**
 2. Click **Add Indexer**
-3. Select **Newznab** from the dropdown
+3. Search for and select **Newznab** in the definition picker
 4. Configure:
 
 **Basic Settings:**
@@ -76,6 +76,8 @@ Example from NZBGeek:
 - **Timeout**: `30` seconds
 - **Retries**: `3`
 - **Rate Limit**: Leave default
+- **Automatic search**: enable for background monitoring searches
+- **Interactive search**: enable for manual searches
 
 ### Step 3: test connection
 
@@ -99,7 +101,7 @@ If you have Jackett running:
 2. Add your desired trackers to Jackett
 3. Copy the **Torznab Feed** URL for a tracker
 4. In Cinephage, add indexer:
-   - Select **Torznab** type
+   - Search for and select **Torznab** in the definition picker
    - Paste the Jackett base URL - Cinephage will auto-discover the Torznab feed endpoint
    - Add Jackett API key
 
@@ -109,57 +111,23 @@ When you enter a Torznab base URL, Cinephage automatically discovers the correct
 
 ### Option b: direct torrent indexer
 
-For public torrent sites, use a YAML definition.
+For public torrent sites, use the built-in definition. Every indexer is backed by a YAML definition file — you just don't paste YAML in the UI, you select the definition in the picker.
 
 #### Example: Adding 1337x
 
 1. Go to **Settings > Integrations > Indexers**
 2. Click **Add Indexer**
-3. Select **YAML Definition**
-4. Use this template:
-
-```yaml
-name: 1337x
-protocol: torrent
-categories:
-  - movies
-  - tv
-enabled: true
-priority: 25
-settings:
-  baseUrl: https://1337x.to
-  search:
-    path: /search/{{query}}/1/
-    selectors:
-      rows: tr
-      title: .coll-1 a:nth-child(2)
-      magnet: .coll-1 a[href^="magnet:"]
-      size: .coll-4
-      seeders: .coll-2
-      leechers: .coll-3
-```
-
-5. Click **Validate** to check the YAML syntax
-6. Click **Test** to verify it works
-7. Click **Save**
+3. Search for and select **1337x** in the definition picker
+4. Configure:
+   - **Name**: `1337x`
+   - **URL**: `https://1337x.to`
+   - **Priority**: `25`
+5. Click **Test** to verify it works
+6. Click **Save**
 
 ## Part 3: Add a Streaming Indexer
 
-For STRM file sources:
-
-```yaml
-name: My Streaming Source
-protocol: streaming
-categories:
-  - movies
-  - tv
-enabled: true
-priority: 10
-settings:
-  baseUrl: https://api.example.com
-  apiKey: your-api-key
-  timeout: 30
-```
+For STRM file sources, search for and select the matching streaming definition in the definition picker, configure its settings, then **Test** and **Save** — same flow as torrent indexers above.
 
 ## Part 4: Built-in Indexers (v0.5.0+)
 
@@ -172,7 +140,7 @@ Russian torrent tracker with extensive movie and TV content.
 **Setup:**
 1. Go to **Settings > Integrations > Indexers**
 2. Click **Add Indexer**
-3. Select **Kinozal** from the dropdown
+3. Search for and select **Kinozal** in the definition picker
 4. Configure:
    - **Name**: `Kinozal`
    - **Priority**: `20`
@@ -259,38 +227,9 @@ If no results appear:
 
 ## YAML Indexer Reference
 
-### Required fields
+If you need a custom indexer without a built-in definition, create your own YAML file: place it in `data/indexers/definitions/custom/` (or set `INDEXER_CUSTOM_DEFINITIONS_PATH`) and restart Cinephage — or submit a PR to Cinephage with your definition so it can ship as built-in.
 
-```yaml
-name: Display Name # Human-readable name
-protocol: torrent # torrent, usenet, or streaming
-categories: # Content types
-  - movies
-  - tv
-enabled: true # true or false
-priority: 25 # Search priority (1-50)
-```
-
-### Protocol-Specific settings
-
-**Torrent:**
-
-```yaml
-settings:
-  baseUrl: https://site.com
-  search:
-    path: /search?q={{query}}
-    selectors:
-      rows: .torrent-row
-      title: .title
-      magnet: .magnet-link
-      torrent: .torrent-link
-      size: .size
-      seeders: .seeders
-      leechers: .leechers
-```
-
-**Usenet (Newznab):**
+### Example: Usenet (Newznab) custom definition
 
 ```yaml
 settings:
@@ -301,14 +240,7 @@ settings:
     tv: 5000
 ```
 
-**Streaming:**
-
-```yaml
-settings:
-  baseUrl: https://api.provider.com
-  apiKey: your-key
-  timeout: 30
-```
+For the file format, see the [YAML Indexer Format Reference](/reference/yaml/indexer-definitions).
 
 ## Troubleshooting
 
