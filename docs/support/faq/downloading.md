@@ -69,6 +69,18 @@ Downloads:
 - Increase timeout in settings
 - Check network connectivity
 
+### Why do I have two copies of the same movie (double disk usage)?
+
+Seeding torrents stay in the download folder while the library holds its own copy. With hardlinks both names share one set of blocks (0 extra space); with a copy fallback each copy costs full size.
+
+Check with:
+
+```bash
+stat -c '%d %i %h %s %n' /path/to/download/file.mkv /path/to/library/file.mkv
+```
+
+Same device + same inode with `Links: 2` = hardlinked, all good. Same size but different inodes with `Links: 1` = full copy — your mounts are split. Fix with the single shared root (`/data` in every container) in the [Docker install](/getting-started/installation/docker) IMPORTANT note, then remove the leftover download copy via your client once seeding is done (never delete the library side).
+
 ### What are Custom Formats?
 
 Custom formats let you score releases based on attributes:

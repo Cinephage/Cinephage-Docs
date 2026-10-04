@@ -80,7 +80,8 @@ Each root folder is dedicated to one media type. Don't mix movies and TV in the 
 **Docker Installations:**
 - Use container paths, not host paths
 - Ensure volume mounts match your paths
-- Example: If you mount `/mnt/media:/media`, use `/media/movies`
+- Example: If you mounted a single shared root `/mnt/user/data:/data`, use `/data/movies`
+- See the single-root IMPORTANT note in the [Docker install](/getting-started/installation/docker) — roots must live under the shared root for hardlinks to work
 
 **Native Installations:**
 - Use absolute paths

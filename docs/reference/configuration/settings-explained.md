@@ -179,6 +179,10 @@ Configure how Cinephage handles file imports:
 Hardlinks are most efficient when the download folder and library are on the same filesystem, as they reference the same underlying data without duplication while allowing seeding to continue.
 :::
 
+:::warning[Silent copy fallback]
+If hardlink creation fails (different container mounts = different filesystems, cross-disk `EXDEV`, or permission `EPERM`), the import **silently falls back to a full copy** (2x space). See the single-root rule in the [Docker install](/getting-started/installation/docker). Check logs for the transfer mode (`hardlink` vs `copy`) when disk usage looks doubled.
+:::
+
 ---
 
 ## Profiles

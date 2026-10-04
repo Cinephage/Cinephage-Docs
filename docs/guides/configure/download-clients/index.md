@@ -74,17 +74,18 @@ Path mapping is required when:
 
 ### Common Docker setups
 
-**Both in Docker (recommended):**
+**Both in Docker (recommended — single shared root):**
 
 ```yaml
-# Cinephage
-downloads:/downloads
-
-# qBittorrent
-downloads:/downloads
+# Cinephage AND download client (identical bind in both)
+data:/data # host /mnt/user/data
 ```
 
-Result: No path mapping needed (both see `/downloads`)
+Result: No path mapping needed. Use `/data/downloads/...` and `/data/media/...` everywhere.
+
+:::warning[Important]
+Mount the **same** root name to the **same** host path in every container (see [Docker install](/getting-started/installation/docker)). Two binds (`/media` + `/downloads`, or two Unraid shares) are different filesystems inside the containers: hardlinks fail (`EXDEV`) and imports silently copy (2x space). When Client Path and Local Path are identical (`/data/... → /data/...`), mapping is a no-op — that is the goal.
+:::
 
 **Cinephage in Docker, client on host:**
 

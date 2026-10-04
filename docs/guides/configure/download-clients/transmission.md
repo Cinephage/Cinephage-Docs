@@ -180,11 +180,13 @@ Cinephage respects these limits and will not remove torrents that are still seed
 
 ### Download directory
 
-Ensure your download directory is accessible to Cinephage:
+Both the default and incomplete folders must sit under the same single shared root from the [Docker install](/getting-started/installation/docker) (e.g. `/data/...` in **both** Transmission and Cinephage), or hardlinks silently fall back to full copies. Restart Transmission after changing these — existing torrents keep their old stored location until you relocate each (stop → set location → verify → resume).
 
 ```json
 {
-  "download-dir": "/downloads/complete"
+  "download-dir": "/data/downloads/torrents/complete",
+  "incomplete-dir": "/data/downloads/torrents/incomplete",
+  "incomplete-dir-enabled": true
 }
 ```
 

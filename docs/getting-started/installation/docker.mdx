@@ -58,8 +58,12 @@ services:
       - BETTER_AUTH_SECRET=CHANGE_ME
     volumes:
       - ./config:/config
-      - /path/to/media:/media
-      - /path/to/downloads:/downloads
+      # Single shared root so imports can hardlink (see IMPORTANT below).
+      # Point /data at the parent folder holding BOTH media and downloads.
+      - /path/to/data:/data
+      # Legacy split layout — causes silent full-copy imports (2x space):
+      # - /path/to/data/media:/media
+      # - /path/to/data/downloads:/downloads
 ```
 
 Replace `CHANGE_ME` with a secure secret:
@@ -107,8 +111,7 @@ services:
     env_file: .env
     volumes:
       - ./config:/config
-      - /mnt/media:/media
-      - /mnt/downloads:/downloads
+      - /mnt/user/data:/data
 ```
 
 #### Configuration Explained
@@ -129,15 +132,20 @@ Update the volume paths to match your system:
 | Container Path | Host Path | Purpose |
 |----------------|-----------|---------|
 | `/config` | `./config` | Database, cache, and settings (relative to compose file) |
-| `/media` | `/mnt/media` | Your existing media library |
-| `/downloads` | `/mnt/downloads` | Where download clients save files |
+| `/data` | `/mnt/user/data` | Single shared root: media library AND downloads live underneath |
 
-**Common path examples:**
+:::warning[Important]
+To make hardlinks work, mount a **single shared root** in **every** container — e.g. `Container /data → Host /mnt/user/data/` on Cinephage *and* your download client — and keep downloads and library underneath it (`/data/downloads`, `/data/media`). Separate binds (`/media` + `/downloads`, or two Unraid shares) look fine on the host but are different filesystems inside the containers, so files may be duplicated between your download client and Cinephage if not set up properly.
+:::
 
-- **Linux server**: `/mnt/media`, `/mnt/downloads`, `/opt/cinephage/config`
-- **Synology NAS**: `/volume1/media`, `/volume1/downloads`
-- **Unraid**: `/mnt/user/media`, `/mnt/user/downloads`
-- **macOS**: `/Users/yourname/media`, `/Users/yourname/downloads`
+**Common path examples (single-root layout):**
+
+- **Linux server**: `/mnt/data` → `/data` (with `/data/media`, `/data/downloads` beneath)
+- **Synology NAS**: `/volume1/data` → `/data`
+- **Unraid**: `/mnt/user/data` → `/data`
+- **macOS**: `/Users/yourname/data` → `/data`
+
+❌ Anti-pattern (causes silent copies): two separate shares/mounts such as Unraid `/mnt/user/media` + `/mnt/user/downloads`, or binds `/media` + `/downloads` from different parents.
 
 :::warning[Important]
 Do not mount `/app` - this contains the application code and should not be modified.
@@ -272,6 +280,16 @@ cinephage  | Ready! Access the web interface at http://localhost:3000
 ```
 
 Press `Ctrl+C` to exit the log view (the container continues running).
+
+:::info[Verify hardlinks work]
+From the host, using your download client's matching `/data` bind:
+
+```bash
+docker exec cinephage sh -c 'echo ok > /data/downloads/.linktest && ln /data/downloads/.linktest /data/media/.linktest && stat -c "Links:%h" /data/downloads/.linktest; rm /data/downloads/.linktest /data/media/.linktest'
+```
+
+Want `Links:2`. `Invalid cross-device link` (or `Links:1`) means the mounts are still split — recheck the IMPORTANT note above before downloading anything.
+:::
 
 ### Step 6: Access Cinephage
 

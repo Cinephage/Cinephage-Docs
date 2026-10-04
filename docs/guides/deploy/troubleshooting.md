@@ -145,30 +145,40 @@ Before diving into specific issues, perform these checks:
 1. **Check path mappings:**
    - Go to download client settings
    - Verify path mappings are correct
+   - Client Path and Local Path should be identical when mounts match (e.g. `/data/... → /data/...`); see the single-root IMPORTANT note in the [Docker install](/getting-started/installation/docker)
    - Ensure Cinephage can access download folder
 
-2. **Check file permissions:**
+2. **Verify hardlinks work (not silent copies):**
+
+   ```bash
+   stat -c '%d %i %h %s %n' /path/to/download/file.mkv /path/to/library/file.mkv
+   ```
+
+   Same device + same inode with `Links: 2` = hardlinked (0 extra space). Same size but different inodes with `Links: 1` = full copy (2x space) — recheck mounts.
+
+3. **Check file permissions:**
    - Verify PUID/PGID in docker-compose.yaml
    - Ensure Cinephage can read download folder
    - Check file ownership in downloads directory
 
-3. **Check volume mounts:**
+4. **Check volume mounts (single shared root):**
 
    ```yaml
    # Verify these paths exist and are correct
    volumes:
      - ./config:/config
-     - /path/to/media:/media
-     - /path/to/downloads:/downloads
+     - /mnt/user/data:/data # media AND downloads underneath
    ```
 
-4. **Check logs:**
+5. **Check logs:**
 
    ```bash
    docker compose logs cinephage | grep -i import
    ```
 
-5. **Manual import test:**
+   Look for the transfer mode (`hardlink` vs `copy` fallback).
+
+6. **Manual import test:**
    - Go to **Library > Import**
    - Try importing the file manually
    - Check for specific error messages

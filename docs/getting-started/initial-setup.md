@@ -83,11 +83,15 @@ Root folders define where Cinephage stores your media library:
 **Path Guidelines:**
 
 - Use the path as seen inside the Docker container
-- If you mounted `/mnt/media:/media` in Docker, use `/media/movies`
+- If you mounted a single shared root (`/mnt/user/data:/data`), use `/data/movies`
 - Ensure Cinephage has read/write permissions to these paths
 - Do not nest Root Folders (e.g., do not put TV inside Movies)
 
 ## Step 6: Configure Download Client (Optional)
+
+:::warning[Important]
+Use the single shared root from the [Docker install](/getting-started/installation/docker) (`/data` in every container) before adding clients — mismatched mounts cause silent full-copy imports. Full per-client paths: [Download clients](/guides/configure/download-clients).
+:::
 
 You can set up your download client now or skip and configure later:
 
@@ -108,7 +112,7 @@ You can set up your download client now or skip and configure later:
 4. Click **Test** to verify
 5. Click **Add**
 
-**Skip This Step:** If you do not have a download client yet, click **Skip**. You can configure this later in Settings.
+**Skip This Step:** If you do not have a download client yet, click **Skip**. You can configure this later in Settings. See [Download clients](/guides/configure/download-clients) for Transmission, qBittorrent, Deluge, and path-mapping specifics.
 
 ## Step 7: Review Settings
 

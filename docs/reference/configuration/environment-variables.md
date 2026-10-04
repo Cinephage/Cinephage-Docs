@@ -309,8 +309,8 @@ services:
 
     volumes:
       - ./config:/config
-      - /mnt/media:/media
-      - /mnt/downloads:/downloads
+      # Single shared root so imports can hardlink (see Docker install IMPORTANT note).
+      - /mnt/user/data:/data
 ```
 
 ## Variable Reference Table
