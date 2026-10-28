@@ -53,7 +53,7 @@
 	},
 	"overrides": {
 		"serialize-javascript": "7.0.5",
-		"undici": "7.24.0",
+		"undici": "7.29.1",
 		"uuid": "^11.1.1"
 	}
 }
