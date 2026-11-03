@@ -21,7 +21,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update submodules to latest
-        run: git submodule update --remote --merge
+        # No --merge: submodules are in detached HEAD at the recorded SHA, and
+        # upstream history can diverge (force-pushes), which makes merging fail.
+        # A plain checkout of the remote branch tip just moves the gitlink.
+        run: git submodule update --remote
 
       - name: Check for changes
         id: changes
