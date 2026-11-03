@@ -34,7 +34,7 @@ export function splitWireGuardEndpoint(endpoint: string): { host: string; port: 
 		return { host, port: '51820' };
 	}
 	const lastColon = t.lastIndexOf(':');
-	// IPv4 host:port — single colon
+	// IPv4 host:port - single colon
 	if (lastColon > 0 && !t.includes('::')) {
 		const host = t.slice(0, lastColon);
 		const port = t.slice(lastColon + 1);

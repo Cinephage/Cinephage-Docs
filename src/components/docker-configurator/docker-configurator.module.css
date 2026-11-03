@@ -587,7 +587,7 @@
 	}
 }
 
-/* Intro splash — real transparency + blur (opaque mixes read as a solid sheet, especially in dark). */
+/* Intro splash - real transparency + blur (opaque mixes read as a solid sheet, especially in dark). */
 .introOverlay {
 	position: fixed;
 	inset: 0;

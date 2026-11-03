@@ -51,12 +51,16 @@ Each must be dedicated to one media type (don't mix movies and TV).
 
 Cinephage can organize files automatically:
 
-1. Configure naming patterns in **Settings > Media Management > Naming**
+1. Configure naming patterns in **Settings > Library > Naming**
 2. Use tokens like `{Movie Title}`, `{Release Year}`, `{Quality}`
 3. Cinephage applies patterns during import
 4. Use "Organize" feature to rename existing files
 
 See [Organize Files](/guides/use/organize-files) for patterns and examples.
+
+### Can Cinephage write local metadata files (NFO/artwork) for Jellyfin/Kodi?
+
+Yes. Since Cinephage's library is `.strm`-based, Jellyfin can't probe the actual media file during a scan, which can leave a title with no known resolution or duration in Jellyfin. Enable **Settings > Library > File Management > Sidecar Files** to have Cinephage write Kodi-standard `.nfo` metadata and `poster.jpg`/`fanart.jpg` artwork alongside each imported movie and episode. See [Configure Sidecar Files](/guides/configure/system/sidecar-files) for details, including how to backfill an existing library.
 
 ### Why are my movies/shows matched incorrectly?
 

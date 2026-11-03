@@ -82,23 +82,29 @@ FAQ, releases, roadmap, and troubleshooting.
 2. **[Configure](/getting-started/initial-setup)** - Set up TMDB API, download clients, and Root Folders
 3. **[Add Media](/getting-started/adding-media)** - Add your first movie or TV show
 
-## New in v0.13.0
+## New in v0.18.0
 
 :::info[Latest Release]
-- **Storage maintenance** - Collapsible library rows, sortable Top Played/Largest Items tables, labeled disk usage legend, deduplicated free space
-- **Prevent resolution downgrades** - New quality profile toggle (on by default) blocks lower-resolution replacements even with higher custom format scores
-- **Naming tokens** - `{OriginalTitle}` and `{OriginalCleanTitle}` for original-language titles in file/folder patterns
-- **Library detail redesign** - Improved movie header layout, mobile sticky action bar, TV series contextual back button
-- **Discover hero** - Video clips and backdrops on media hero; keyword blocklist filters dashboard sections immediately
-- **Failed download cooldown** - 1-hour cooldown before re-grab; unknown-size releases rejected when size limits are set
+- **Multi-user accounts** - Admin and viewer roles, invites/bans, per-user avatars, and importing accounts from a connected media server
+- **Media requests** - A Seerr-style request system: viewers submit, admins approve/decline with quotas
+- **Live TV** - A new feature area with the built-in Cinephage Live provider, Stalker/XStream/M3U account support, and EPG sync
+- **Radarr/Sonarr compatibility** - A new API layer for third-party tools like autobrr, Pulsarr, Notifiarr, and Overseerr/Jellyseerr
+- **Language system v2** - Rebuilt language profiles with library-level defaults, per-item overrides, and canonical ISO 639 tag mapping
+- **Subtitles overhaul** - Per-requirement acquisition, atomic downloads, and a reconcile scanner for orphaned subtitle files
+- **Security** - All third-party credentials are now encrypted at rest, independently rotatable via `ENCRYPTION_MASTER_KEY`
+- **Library** - NFO/poster/fanart sidecar files, a "Change Match" action, and TV library sort/filter by missing episodes
 
-[View release notes →](/support/releases#latest---v0130-2026-06-29)
+[View release notes →](/support/releases#latest---v0180-2026-11-01)
+:::
+
+:::info[Still in alpha]
+Cinephage v0.18.0 is still an alpha release - expect breaking changes between versions. See the [Roadmap](/support/roadmap) for what's planned next.
 :::
 
 ## Getting Help
 
 - [Discord](https://discord.gg/scGCBTSWEt) - Community chat
-- [GitHub Issues](https://github.com/MoldyTaint/Cinephage/issues) - Bug reports and feature requests
+- [GitHub Issues](https://github.com/cinephage/cinephage/issues) - Bug reports and feature requests
 - [Troubleshooting Guide](/guides/deploy/troubleshooting) - Common issues and fixes
 
 ---

@@ -19,9 +19,11 @@ Cinephage provides comprehensive media management capabilities:
 - **Movies** - Library management, monitoring, quality profiles, automatic downloads
 - **TV Shows** - Episode tracking, season packs, automatic episode searches
 - **Indexer Management** - YAML-based indexer definitions, built-in and custom support
-- **Subtitles** - 11 subtitle providers with automatic syncing
+- **Subtitles** - 13 subtitle providers with automatic syncing
 - **Requests & Discovery** - Browse trending content, manage watchlists
 - **Live TV & Streaming** - Live TV support via Stalker, XStream, M3U playlists
+- **Radarr/Sonarr Compatibility** - Optional API layer (`/api/radarr`, `/api/sonarr`) so tools like autobrr, Overseerr/Jellyseerr, Pulsarr, and Notifiarr can connect directly, no separate Radarr/Sonarr instance needed - see [Configure Radarr/Sonarr Compatibility](/guides/configure/system/arr-compat)
+- **Sidecar Files** - Optional Kodi-standard `.nfo` metadata and poster/fanart artwork written alongside imports, for accurate Jellyfin/Kodi metadata - see [Configure Sidecar Files](/guides/configure/system/sidecar-files)
 
 ### Is Cinephage free?
 
@@ -65,4 +67,4 @@ docker compose exec cinephage env
 - [Installation FAQ](/support/faq/installation) - Installation questions
 - [Configuration FAQ](/support/faq/configuration) - Configuration help
 - [Library Management](/support/faq/library) - Managing your media library
-- [GitHub Repository](https://github.com/MoldyTaint/Cinephage) - Source code and releases
+- [GitHub Repository](https://github.com/cinephage/cinephage) - Source code and releases

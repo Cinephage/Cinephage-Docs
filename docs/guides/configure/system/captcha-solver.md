@@ -1,7 +1,7 @@
 ---
 title: Captcha Solver
 description: Configure built-in Cloudflare challenge bypass using Camoufox
-sidebar_position: 10
+sidebar_position: 6
 tags: [captcha, cloudflare, camoufox, configuration, guide]
 keywords: [captcha, cloudflare, camoufox, browser]
 ---
@@ -25,22 +25,25 @@ The Captcha Solver uses **Camoufox** - a privacy-focused Firefox fork with anti-
 
 ## Configuration
 
-Navigate to **Settings > Integrations > Captcha Solver**:
+Navigate to **Settings > System > Captcha Solver**:
 
 ### Basic settings
 
-| Setting       | Description                          | Default |
-| ------------- | ------------------------------------ | ------- |
-| **Enabled**   | Turn solver on/off                   | Enabled |
-| **Timeout**   | Max time to wait for solve (seconds) | 60      |
-| **Cache TTL** | How long to keep cookies (hours)     | 1       |
-| **Headless**  | Run browser without GUI              | Enabled |
+| Setting       | Description                          | Default  |
+| ------------- | ------------------------------------ | -------- |
+| **Enabled**   | Turn solver on/off                   | Disabled |
+| **Timeout**   | Max time to wait for solve (seconds) | 60       |
+| **Cache TTL** | How long to keep cookies             | 1 hour   |
+
+The solver always runs headless - there's no UI toggle for running it with a visible browser.
 
 ### Advanced settings
 
-| Setting   | Description                       | Default |
-| --------- | --------------------------------- | ------- |
-| **Proxy** | HTTP proxy for browser (optional) | None    |
+| Setting            | Description                                | Default |
+| ------------------ | ------------------------------------------- | ------- |
+| **Proxy URL**       | HTTP proxy for the browser (optional)       | None    |
+| **Proxy Username**  | Proxy authentication username (optional)    | None    |
+| **Proxy Password**  | Proxy authentication password (optional)    | None    |
 
 ---
 
@@ -54,7 +57,7 @@ Cookies are cached per-domain to minimize repeated challenges:
 
 ### Clearing cookies
 
-Via UI: **Settings > Integrations > Captcha Solver > Clear Cache**
+Via UI: **Settings > System > Captcha Solver > Clear Cache**
 
 ---
 
@@ -75,15 +78,14 @@ The solver tracks its own performance:
 
 ### Challenges not being solved
 
-1. **Check solver is enabled** - **Settings > Integrations > Captcha Solver**
+1. **Check solver is enabled** - **Settings > System > Captcha Solver**
 2. **Increase timeout** - Some challenges take 30+ seconds
 3. **Check logs** - Look for "captcha" or "camoufox" errors
 4. **Clear cookie cache** - Corrupted cookies can cause failures
 
 ### High failure rate
 
-1. **Disable headless mode** - Temporarily to debug (requires display)
-2. **Check proxy settings** - If using proxy, verify it works
+1. **Check proxy settings** - If using a proxy, verify it works and credentials are correct
 3. **Update Camoufox** - Solver uses latest browser version automatically
 
 ### Indexer still blocked
@@ -108,5 +110,5 @@ Try alternative indexers if one is consistently blocked.
 
 ## See Also
 
-- [Indexers](./indexers) - Configuring indexers that need Cloudflare bypass
-- [Troubleshooting](../deploy/troubleshooting) - General troubleshooting guide
+- [Indexers](../indexers) - Configuring indexers that need Cloudflare bypass
+- [Troubleshooting](../../deploy/troubleshooting) - General troubleshooting guide

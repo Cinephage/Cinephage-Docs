@@ -34,7 +34,7 @@ See [Backup & Restore](../deploy/backup-restore) for detailed backup procedures.
 
 Review what's changed:
 
-- [GitHub Releases](https://github.com/MoldyTaint/Cinephage/releases)
+- [GitHub Releases](https://github.com/cinephage/cinephage/releases)
 - [CHANGELOG.md](/support/releases)
 
 Look for:
@@ -71,8 +71,8 @@ docker logs cinephage --tail 50
 
 ```bash
 # Edit docker-compose.yaml to specify version
-# Change: image: ghcr.io/moldytaint/cinephage:latest
-# To:     image: ghcr.io/moldytaint/cinephage:v1.2.3
+# Change: image: ghcr.io/cinephage/cinephage:latest
+# To:     image: ghcr.io/cinephage/cinephage:v1.2.3
 
 docker compose up -d
 ```

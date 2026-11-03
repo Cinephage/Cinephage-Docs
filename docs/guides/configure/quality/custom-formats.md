@@ -1,7 +1,7 @@
 ---
 title: Custom Formats
 description: Create personalized scoring rules that go beyond built-in quality profiles
-sidebar_position: 7
+sidebar_position: 2
 tags: [custom-formats, scoring, configuration, guide]
 keywords: [Custom Formats, scoring, conditions, rules]
 ---
@@ -24,7 +24,7 @@ Think of them as "search filters with scores":
 
 ## Creating a Custom Format
 
-Navigate to **Settings > Quality > Custom Formats**:
+Navigate to **Settings > Library > Quality Settings** and select the **Custom Formats** tab:
 
 ### 1. Basic information
 
@@ -37,16 +37,23 @@ Click **Add Condition** and choose a type:
 
 #### Condition Types
 
-| Type              | Matches           | Example                                   |
-| ----------------- | ----------------- | ----------------------------------------- |
-| **Release Title** | Full release name | `Movie.Name.2023.1080p.BluRay.x264-Group` |
-| **Resolution**    | Video resolution  | 720p, 1080p, 2160p                        |
-| **Source**        | Release source    | BluRay, WEB-DL, HDTV                      |
-| **Codec**         | Video codec       | x264, x265, AV1                           |
-| **Audio**         | Audio format      | DTS, AAC, TrueHD                          |
-| **HDR**           | HDR format        | HDR10, Dolby Vision                       |
-| **Release Group** | Encoder group     | SPARKS, RARBG, YIFY                       |
-| **Size**          | File size range   | 1-4 GB                                    |
+| Type                  | Matches                        | Example                                   |
+| --------------------- | ------------------------------- | ----------------------------------------- |
+| **Release Title**     | Full release name              | `Movie.Name.2023.1080p.BluRay.x264-Group` |
+| **Resolution**        | Video resolution                | 720p, 1080p, 2160p                        |
+| **Source**             | Release source                  | BluRay, WEB-DL, HDTV                      |
+| **Codec**              | Video codec                     | x264, x265, AV1                           |
+| **Audio Codec**        | Audio codec                     | DTS, AAC, TrueHD                          |
+| **Audio Channels**     | Audio channel layout            | 5.1, 7.1, 2.0                             |
+| **Audio Atmos**        | Whether the release has Atmos   | Yes/No                                    |
+| **HDR**                | HDR format                      | HDR10, Dolby Vision                       |
+| **Release Group**      | Encoder group                   | SPARKS, RARBG, YIFY                       |
+| **Streaming Service**  | Source streaming platform       | Netflix, AMZN, DSNP                       |
+| **Indexer**            | Which indexer the release came from | NZBGeek, 1337x                        |
+| **Language**           | Audio/subtitle language         | English, Japanese                         |
+| **Flag**                | Release flags (e.g. PROPER, REPACK, internal) | PROPER                      |
+
+There's no file-size custom format condition - minimum/maximum file size is a separate setting on the quality profile itself, not a custom format rule.
 
 ### 3. Set match logic
 
@@ -107,7 +114,7 @@ Conditions:
 
 ### Assign to quality profile
 
-1. Go to **Settings > Quality > Quality Profiles**
+1. Go to **Settings > Library > Quality Settings** (the **Profiles** tab)
 2. Edit a profile
 3. Under "Custom Formats", enable your formats
 4. Set minimum score if needed
@@ -249,5 +256,5 @@ Release Title matches regex: \d{3,4}kbps
 ## See Also
 
 - [Quality Profiles](./quality-profiles) - Built-in Quality Profiles
-- [Search & Download](../use/search-and-download) - How releases are selected
+- [Search & Download](../../use/search-and-download) - How releases are selected
 - [Delay Profiles](./delay-profiles) - Control when releases are grabbed

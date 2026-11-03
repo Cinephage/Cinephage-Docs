@@ -370,7 +370,7 @@ You can run Cinephage alongside other media tools:
 
 Cinephage looks for video file extensions:
 ```
-.mkv, .mp4, .avi, .m4v, .mov, .wmv, .ts, .m2ts
+.mkv, .mp4, .avi, .m4v, .mov, .wmv, .mpg, .mpeg, .m2ts, .ts, .webm, .flv, .vob, .ogv, .3gp, .strm
 ```
 
 **Check Folder Permissions:**
@@ -438,50 +438,29 @@ Cinephage warns about potential duplicates:
 
 ## Advanced Import Techniques
 
-### CLI import
+### Import API
 
-For headless or scripted imports:
+There is no `npm run import` CLI command. The manual import UI itself is backed by a REST API you
+can call directly (with an authenticated admin session):
 
-```bash
-# Import specific folder
-npm run import -- --path /path/to/movies --type movie
+- `POST /api/library/import/detect` - given a `sourcePath` (and optional `mediaType`), detects
+  and TMDB-matches media files under that path
+- `POST /api/library/import/execute` / `POST /api/library/import/bulk` - imports one or many
+  detected/matched files
+- `GET /api/library/import/progress` - polls progress of an in-flight import
 
-# Import with options
-npm run import -- --path /path/to/tv --type tv --method hardlink --monitor true
-```
+These are the same endpoints the **Library > Import** UI uses, so scripting against them requires
+a valid authenticated session (an API key or logged-in cookie), not an anonymous `curl` call.
 
-### Import scripts
+### Automatic root folder watching
 
-Automate imports with custom scripts:
-
-```bash
-#!/bin/bash
-# import-new.sh - Import new downloads
-
-SOURCE="/downloads/complete"
-DEST_MOVIES="/media/movies"
-DEST_TV="/media/tv"
-
-# Trigger Cinephage import API
-curl -X POST http://localhost:3000/api/import \
-  -H "Content-Type: application/json" \
-  -d '{
-    "path": "'"$SOURCE"'",
-    "type": "auto",
-    "method": "move"
-  }'
-```
-
-### Watch folders
-
-Configure automatic import from specific folders:
-
-1. Go to **Settings > Media Management > Import**
-2. Add watch folder:
-   - Path: `/downloads/complete`
-   - Type: Auto-detect (Movie/TV)
-   - Action: Import and organize
-3. Files in watch folder automatically import
+You don't need to configure a separate "watch folder" - Cinephage automatically watches each
+configured **root folder** for filesystem changes (new, removed, or modified files) and triggers
+an incremental scan when it detects them. This means files dropped directly into a root folder
+(for example, by another tool or a download client's Move/Hardlink) are picked up automatically
+without a manual **Library Scan**. This does not apply to arbitrary folders outside your
+configured root folders (like a raw `/downloads/complete` staging folder) - those still need to go
+through the manual import flow described above.
 
 ## Best Practices
 

@@ -1,7 +1,7 @@
 ---
 title: Library Maintenance
 description: Keep your media library organized and healthy with regular maintenance
-sidebar_position: 8
+sidebar_position: 4
 tags: [library, maintenance, scanning, metadata, guide]
 keywords: [library, maintenance, scanning, metadata, disk space]
 ---
@@ -46,11 +46,12 @@ Regular maintenance keeps your library organized and running smoothly.
 
 ### Automatic scanning
 
-Configure in Settings:
-```
-**Settings > Media Management > Library Scan**
-Scan Interval: 6 hours (or custom)
-```
+Scanning is configured per-library rather than globally. Edit a library under **Settings > Library > Libraries** and set its **Scan Mode**:
+
+- **Manual** - Only scans when you trigger it
+- **Scheduled** - Scans on an interval you set (in minutes)
+- **Scheduled Daily** - Scans once per day at a time you set
+- **Watch** - Watches the filesystem for changes and scans automatically (with a debounce delay)
 
 ### Scan results
 
@@ -80,7 +81,7 @@ TMDB data changes over time. Refresh monthly for active series.
 
 ### Monitor usage
 
-Navigate to **Settings > General > Storage Maintenance** to get a full picture of your storage:
+Navigate to **Settings > Monitoring > Storage Maintenance** to get a full picture of your storage:
 
 - **Storage summary** - total used across all libraries broken down by movies, TV, and subtitles with a visual usage bar
 - **Libraries and Root Folders** - per-library and per-root-folder breakdown with disk usage bars showing Cinephage vs other vs free space; click a library row to collapse or expand its root folders
@@ -110,11 +111,6 @@ When multiple root folders share the same physical disk or network share, Cineph
    - Keep only best quality
    - Delete lower quality duplicates
    - Use "Organize" to consolidate
-
-4. **Export List:**
-   - Export library to CSV
-   - Analyze outside Cinephage
-   - Identify candidates for deletion
 
 ## Best Practices
 
@@ -167,7 +163,7 @@ When multiple root folders share the same physical disk or network share, Cineph
 
 ## See Also
 
-- [Import Existing Files](../use/import-existing-files) - Import your existing media
-- [Organize Files](../use/organize-files) - File naming and organization
-- [Monitor and Upgrade](../use/monitor-and-upgrade) - Automated monitoring
-- [Troubleshooting](../deploy/troubleshooting) - Solve common issues
+- [Import Existing Files](../../use/import-existing-files) - Import your existing media
+- [Organize Files](../../use/organize-files) - File naming and organization
+- [Monitor and Upgrade](../../use/monitor-and-upgrade) - Automated monitoring
+- [Troubleshooting](../../deploy/troubleshooting) - Solve common issues

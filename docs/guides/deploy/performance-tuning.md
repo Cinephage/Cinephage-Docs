@@ -148,36 +148,26 @@ Cinephage performs automatic maintenance:
 
 #### Manual Optimization
 
-**VACUUM Database:**
-
-Reclaim space and optimize:
-
-```bash
-# Native install
-sqlite3 data/cinephage.db "VACUUM;"
-
-# Docker
-docker exec -it cinephage sqlite3 /config/data/cinephage.db "VACUUM;"
-```
-
-**ANALYZE Database:**
-
-Update query planner statistics:
+The Cinephage Docker image does not include the `sqlite3` CLI, so `docker exec cinephage sqlite3
+...` will not work. To run manual `VACUUM`/`ANALYZE`/`REINDEX` statements, stop Cinephage first
+(so nothing is writing to the database), then run `sqlite3` either from a native/bare-metal
+install, or against a copy of the file on the host using your own local `sqlite3` installation:
 
 ```bash
-sqlite3 data/cinephage.db "ANALYZE;"
-```
+# Stop Cinephage first
+docker compose down
 
-**REINDEX:**
+# Then, using sqlite3 installed on the host, against the mounted volume
+sqlite3 /path/to/cinephage/config/data/cinephage.db "VACUUM;"
+sqlite3 /path/to/cinephage/config/data/cinephage.db "ANALYZE;"
+sqlite3 /path/to/cinephage/config/data/cinephage.db "REINDEX;"
 
-Rebuild indexes:
-
-```bash
-sqlite3 data/cinephage.db "REINDEX;"
+# Restart
+docker compose up -d
 ```
 
 :::caution[Backup First]
-Always backup your database before manual maintenance operations.
+Always back up your database before manual maintenance operations - see [Backup & Restore](backup-restore).
 :::
 
 ### Database size management
@@ -186,22 +176,17 @@ Monitor database growth:
 
 ```bash
 # Check database size
-ls -lh data/cinephage.db
-
-# Check table sizes (SQLite)
-sqlite3 data/cinephage.db "SELECT name FROM sqlite_master WHERE type='table';"
+ls -lh /path/to/cinephage/config/data/cinephage.db
 ```
 
 **Prune Old Data:**
 
-Configure automatic cleanup:
+Cinephage automatically prunes old data on a schedule; the retention windows you can actually
+tune are:
 
-```yaml
-# In **Settings > System > Data Retention**
-History Retention: 90 days
-Task Logs Retention: 30 days
-Search History: 30 days
-```
+- **Log file retention** - under **Settings > Monitoring > Logs** (default: 7 days)
+- **Task history retention** - automatically purged after 30 days by the built-in History Cleanup
+  scheduled task (not currently user-configurable in the UI)
 
 ## Memory Optimization
 
@@ -229,17 +214,10 @@ Cinephage memory usage by component:
    WORKER_MAX_MONITORING=2
    ```
 
-2. **Limit Cache Size:**
-   ```yaml
-   NZB Cache Size: 5 GB
-   Prefetch: Disabled
-   ```
-
-3. **Reduce Task Frequency:**
-   ```
-   RSS Sync: 30 minutes (not 15)
-   Missing Content Search: 12 hours (not 6)
-   ```
+2. **Reduce Task Frequency:**
+   Under **Settings > Monitoring > Tasks**, increase the interval for scheduled search tasks
+   (e.g. Missing Content Search, Upgrade Search) - each task's interval is user-configurable down
+   to a 15-minute minimum, so raising it on a low-memory system reduces background load.
 
 4. **Disable Unused Features:**
    - Live TV (if not using)
@@ -268,11 +246,8 @@ ps aux | grep cinephage
 htop
 ```
 
-**In-App:**
-
-```
-**Settings > System > Memory Usage**
-```
+Cinephage does not currently have an in-app memory/uptime dashboard; use `docker stats` or the
+host OS tools above.
 
 ## Search Performance
 
@@ -310,12 +285,14 @@ If an indexer consistently times out:
 
 Adjust based on your needs:
 
-| Task | Conservative | Balanced | Aggressive |
-|------|--------------|----------|------------|
-| **RSS Sync** | 30 min | 15 min | 5 min |
-| **Missing Search** | 12 hours | 6 hours | 1 hour |
-| **Cutoff Unmet** | Daily | Daily | Every 6 hours |
-| **Upgrade Search** | Weekly | Weekly | Daily |
+| Task | Conservative | Cinephage default | Aggressive (min. 15 min) |
+|------|--------------|--------------------|----------------------------|
+| **New Episode Check** | 6 hours | 1 hour | 15 min |
+| **Missing Content Search** | 48 hours | 24 hours (daily) | 1 hour |
+| **Cutoff Unmet Search** | 48 hours | 24 hours (daily) | Every 6 hours |
+| **Upgrade Search** | Weekly | Weekly (168h) | Daily |
+
+These are configured per-task under **Settings > Monitoring > Tasks**.
 
 :::tip[Aggressive Searching]
 More frequent searches use more resources and hit indexer rate limits. Start conservative.
@@ -323,17 +300,14 @@ More frequent searches use more resources and hit indexer rate limits. Start con
 
 ### Caching search results
 
-Cinephage caches search results to avoid redundant API calls:
+Cinephage caches indexer search results in memory to avoid redundant API calls:
 
-- **Cache Duration:** 15 minutes by default
-- **Cache Size:** Automatic
+- **Cache Duration:** 5 minutes by default (per-search TTL)
+- **Cache Size:** Capped at 500 entries (LRU eviction)
 - **Benefit:** Faster repeated searches
 
-**Clear Search Cache:**
-
-```
-**Settings > System > Clear Cache**
-```
+This cache is in-memory only and clears automatically on restart; there is no dedicated "clear
+cache" button in the UI for it.
 
 ## Library Scan Performance
 
@@ -372,10 +346,8 @@ After initial import, scans are faster:
 
 **Optimize Ongoing Scans:**
 
-```
-**Settings > Media Management > Library Scan**
-Scan Interval: 12-24 hours
-```
+Set the scan interval per library under **Settings > Library > Libraries** (edit a library, "Scan
+Interval" field).
 
 ## Network Optimization
 
@@ -496,67 +468,36 @@ Cinephage uses `node:24-trixie-slim` (Debian-based):
 
 **System Status:**
 
-```
-**Settings > System > Status**
-```
-
-Shows:
-- Database size
-- Worker status
-- Memory usage
-- Uptime
-
-**Task Performance:**
-
-```
-**Settings > Tasks > Performance**
-```
-
-Shows:
-- Task execution times
-- Success rates
-- Queue depths
+**Settings > Monitoring > Storage Maintenance** shows storage/reconciliation-related maintenance
+info, and **Settings > Monitoring > Tasks** lists every scheduled and maintenance task with its
+last run time, next run time, and running/enabled state - click into a task's history to see
+per-run status (completed/failed/cancelled) and per-item results. Cinephage does not currently
+expose an in-app memory usage, uptime, or worker-queue-depth dashboard; use `docker stats` and the
+host OS tools described above for that.
 
 ### Log analysis
 
-**Enable Performance Logging:**
+Set the log level with the `LOG_LEVEL` environment variable (e.g. `LOG_LEVEL=debug`); there is no
+separate `LOG_PERFORMANCE` variable. Log retention is configured under **Settings > Monitoring >
+Logs**.
 
-```yaml
-environment:
-  - LOG_LEVEL=debug
-  - LOG_PERFORMANCE=true
-```
-
-**Analyze Logs:**
+Logs are written as JSON Lines, one file per day, at `<DATA_DIR>/logs/app-YYYY-MM-DD.jsonl`
+(`/config/data/logs/app-YYYY-MM-DD.jsonl` in Docker) - not a single `cinephage.log` file:
 
 ```bash
-# Slow queries
-grep -i "slow" logs/cinephage.log
+# Docker
+docker exec cinephage grep -i "worker" /config/data/logs/app-$(date +%Y-%m-%d).jsonl
 
-# Worker performance
-grep -i "worker" logs/cinephage.log | grep "completed"
-
-# Import times
-grep -i "import" logs/cinephage.log | grep "took"
+# Native
+grep -i "worker" data/logs/app-$(date +%Y-%m-%d).jsonl
 ```
+
+Recent logs are also viewable and searchable in the UI under **Settings > Monitoring > Logs**.
 
 ### External monitoring
 
-**Prometheus/Grafana:**
-
-Cinephage exposes metrics (if configured):
-
-```yaml
-environment:
-  - METRICS_ENABLED=true
-  - METRICS_PORT=9090
-```
-
-**Metrics Available:**
-- Request latency
-- Database query time
-- Worker queue depth
-- Memory usage
+Cinephage does not currently expose a Prometheus/metrics endpoint. There is no `METRICS_ENABLED`
+or `METRICS_PORT` environment variable.
 
 ## Troubleshooting Performance Issues
 
@@ -572,10 +513,10 @@ environment:
 1. **Check Database:**
    ```bash
    # Database size
-   ls -lh data/cinephage.db
-   
-   # Run VACUUM if >1GB
-   sqlite3 data/cinephage.db "VACUUM;"
+   ls -lh /path/to/cinephage/config/data/cinephage.db
+
+   # If >1GB, stop Cinephage and run VACUUM with a local sqlite3 install
+   # (the sqlite3 CLI is not bundled in the Cinephage container - see Database Optimization above)
    ```
 
 2. **Check Memory:**
@@ -610,10 +551,10 @@ environment:
    WORKER_MAX_MONITORING=3
    ```
 
-2. **Limit Cache:**
-   ```
-   **Settings > Integrations > NNTP > Cache Size**: 5GB
-   ```
+2. **Manage the Streaming Extraction Cache:**
+   The NZB/usenet streaming extraction cache lives under **Settings > Integrations > Streaming**.
+   It shows cached file count/size and lets you manually clean up expired files; the retention
+   period is currently fixed (48 hours by default) and not user-adjustable in the UI.
 
 3. **Restart Container:**
    ```bash
@@ -664,10 +605,10 @@ environment:
    - Use 3-5 fast indexers
    - Disable slow/unreliable ones
 
-2. **Increase Timeout:**
-   ```
-   **Settings > Indexers > Timeout**: 30 seconds
-   ```
+2. **Check Individual Indexer Health:**
+   Cinephage does not currently expose a per-indexer or global search timeout setting in the UI.
+   If a specific indexer is consistently slow or timing out, disable it or lower its priority
+   under **Settings > Integrations > Indexers**.
 
 3. **Check Network:**
    ```bash

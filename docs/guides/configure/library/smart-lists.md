@@ -1,7 +1,7 @@
 ---
 title: Set Up Smart Lists
 description: Create dynamic TMDB-powered lists that automatically discover and add content to your library
-sidebar_position: 9
+sidebar_position: 6
 tags: [smart-lists, automation, configuration, guide, tmdb]
 keywords: [smart lists, automation, tmdb, discovery]
 ---
@@ -34,7 +34,7 @@ Smart Lists continuously monitor TMDB's database and automatically find content 
 
 ### Step 1: access smart lists
 
-1. Navigate to **Library > Smart Lists** in the main navigation
+1. Navigate to **Smart Lists** in the main navigation
 2. Click the **Add Smart List** button
 3. The Smart List configuration modal will open
 
@@ -214,7 +214,7 @@ Manual refreshes still respect TMDB rate limits. If you've refreshed recently, y
 
 Modify existing Smart Lists:
 
-1. Go to **Library > Smart Lists**
+1. Go to **Smart Lists**
 2. Click the **Edit** icon on your list
 3. Modify settings, filters, or auto-add behavior
 4. Click **Save**
@@ -422,6 +422,6 @@ To use an external source, select it as the **List Source** when creating or edi
 
 ## See Also
 
-- [Configure Quality Profiles](quality-profiles) - Set up quality profiles for auto-added items
-- [Configure Indexers](indexers) - Ensure indexers are configured for automatic search
+- [Configure Quality Profiles](../quality/quality-profiles) - Set up quality profiles for auto-added items
+- [Configure Indexers](../indexers) - Ensure indexers are configured for automatic search
 - [Understanding the Interface](/getting-started/understanding-interface) - Learn about the Library view

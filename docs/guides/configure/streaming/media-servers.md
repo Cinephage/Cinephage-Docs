@@ -1,7 +1,7 @@
 ---
 title: Configure Media Servers
 description: Connect Jellyfin, Emby, or Plex for automatic library updates
-sidebar_position: 11
+sidebar_position: 1
 tags: [media-servers, jellyfin, emby, plex, notifications, configuration, guide]
 keywords: [media servers, jellyfin, emby, plex, notifications]
 ---
@@ -129,14 +129,6 @@ Select multiple servers to:
 | **Unhealthy** | Enabled, last test failed                |
 | **Disabled** | Manually disabled, no notifications sent  |
 
-## Manual Library Refresh
-
-To trigger a full library refresh manually:
-
-1. Go to **Settings > Integrations > Media Servers**
-2. Click **Trigger Refresh** on the server
-3. The server will refresh all libraries
-
 ## Troubleshooting
 
 ### Connection test fails
@@ -213,10 +205,9 @@ To trigger a full library refresh manually:
 | PUT    | `/api/notifications/mediabrowser/[id]`      | Update server         |
 | DELETE | `/api/notifications/mediabrowser/[id]`      | Delete server         |
 | POST   | `/api/notifications/mediabrowser/[id]/test` | Test connection       |
-| POST   | `/api/notifications/mediabrowser/trigger`   | Manual full refresh   |
 
 ## See Also
 
 - [Initial Setup](/getting-started/initial-setup) - First-time configuration
-- [Root Folders](root-folders) - Managing your media library
-- [Troubleshooting](../deploy/troubleshooting) - General troubleshooting
+- [Root Folders](../library/root-folders) - Managing your media library
+- [Troubleshooting](../../deploy/troubleshooting) - General troubleshooting

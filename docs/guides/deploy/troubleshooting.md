@@ -86,12 +86,17 @@ Before diving into specific issues, perform these checks:
 **Solutions:**
 
 1. **Reset admin password:**
-   - Access container shell:
-     ```bash
-     docker exec -it cinephage sh
-     ```
-   - Reset password via database or use recovery procedure
-   - See logs for specific error
+
+   Cinephage ships a built-in script for this - run it via the `cine-run` helper inside the
+   container:
+
+   ```bash
+   # List admin users
+   docker exec -it cinephage cine-run reset-admin-password --list-admins
+
+   # Reset a specific admin's password (reads the new password from stdin)
+   printf '%s' 'NewPass123!' | docker exec -i cinephage cine-run reset-admin-password --username admin --password-stdin
+   ```
 
 2. **Check BETTER_AUTH_URL:**
    - Must match your access URL exactly
@@ -180,7 +185,7 @@ Before diving into specific issues, perform these checks:
 **Solutions:**
 
 1. **Verify API key:**
-   - Go to **Settings > General**
+   - Go to **Settings > System > Metadata Providers**
    - Check TMDB API key is entered
    - Click **Test** to verify
 
@@ -225,9 +230,14 @@ Before diving into specific issues, perform these checks:
 
 3. **Database corruption check:**
 
+   The `sqlite3` CLI is not installed in the Cinephage container, so run this from the host
+   against the mounted volume (with your own local `sqlite3` install), ideally after stopping
+   Cinephage:
+
    ```bash
-   docker exec -it cinephage sh
-   sqlite3 /config/data/cinephage.db "PRAGMA integrity_check;"
+   docker compose down
+   sqlite3 /path/to/cinephage/config/data/cinephage.db "PRAGMA integrity_check;"
+   docker compose up -d
    ```
 
 4. **Restore from backup:**
@@ -255,9 +265,13 @@ Before diving into specific issues, perform these checks:
 
 2. **Optimize database:**
 
+   The `sqlite3` CLI is not bundled in the Cinephage container. Stop Cinephage, then run `VACUUM`
+   from the host against the mounted volume with your own local `sqlite3` install:
+
    ```bash
-   docker exec -it cinephage sh
-   sqlite3 /config/data/cinephage.db "VACUUM;"
+   docker compose down
+   sqlite3 /path/to/cinephage/config/data/cinephage.db "VACUUM;"
+   docker compose up -d
    ```
 
 3. **Reduce indexer count:**
@@ -379,11 +393,13 @@ Get more detailed logs:
 
 ### Database inspection
 
-Investigate database issues:
+Investigate database issues. The `sqlite3` CLI is not installed inside the Cinephage container, so
+access the database file from the host instead (stop Cinephage first to avoid opening it while
+it's being written to):
 
 ```bash
-# Access database
-docker exec -it cinephage sqlite3 /config/data/cinephage.db
+# Access database (using your own local sqlite3 install)
+sqlite3 /path/to/cinephage/config/data/cinephage.db
 
 # List tables
 .tables
@@ -425,7 +441,7 @@ If you cannot resolve the issue:
 Before asking for help, collect:
 
 1. **Cinephage version:**
-   - Check **Settings > System**
+   - Check **Settings > System > Cinephage**
 
 2. **Docker version:**
 
@@ -459,7 +475,7 @@ Before asking for help, collect:
    - Real-time chat support
    - Searchable history
 
-2. **GitHub Issues** - [Report bugs](https://github.com/MoldyTaint/Cinephage/issues)
+2. **GitHub Issues** - [Report bugs](https://github.com/cinephage/cinephage/issues)
    - Bug reports
    - Feature requests
    - Include logs and reproduction steps
@@ -511,7 +527,7 @@ Any other relevant information
 ### Monitoring
 
 - Watch **Activity > History** for patterns
-- Review **Settings > Logs** periodically
+- Review **Settings > Monitoring > Logs** periodically
 - Monitor system resources
 
 ### Best practices

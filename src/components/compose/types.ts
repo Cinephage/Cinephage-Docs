@@ -7,7 +7,7 @@ export type DavChoice = 'none' | 'nzbdav' | 'altmount';
 export type TorrentChoice = 'none' | 'qbittorrent' | 'transmission' | 'deluge' | 'rtorrent';
 export type VpnPreset = 'none' | 'protonvpn' | 'mullvad' | 'custom';
 
-/** Host environment — used for path hints only (not emitted to compose). */
+/** Host environment - used for path hints only (not emitted to compose). */
 export type HostOs = 'windows' | 'mac' | 'linux' | 'nas';
 
 /** Jellyfin hardware acceleration (Linux-oriented; review on your host). */
@@ -24,7 +24,7 @@ export interface CustomVpnFields {
 }
 
 /**
- * ProtonVPN via Gluetun — `WIREGUARD_PRIVATE_KEY` from Proton’s WireGuard config page;
+ * ProtonVPN via Gluetun - `WIREGUARD_PRIVATE_KEY` from Proton’s WireGuard config page;
  * Gluetun picks servers using optional `SERVER_*` filters (see gluetun-wiki ProtonVPN).
  */
 export interface ProtonVpnFields {
@@ -35,7 +35,7 @@ export interface ProtonVpnFields {
 	serverCities: string;
 }
 
-/** Mullvad via Gluetun — use WireGuard key from Mullvad account; see Gluetun wiki. */
+/** Mullvad via Gluetun - use WireGuard key from Mullvad account; see Gluetun wiki. */
 export interface MullvadVpnFields {
 	wireguardPrivateKey: string;
 	/** Optional Gluetun filter, e.g. CH or empty for any */
@@ -114,7 +114,7 @@ export function defaultDirectHostPorts(): DirectHostPortMap {
 
 export interface StackConfiguratorState {
 	tz: string;
-	/** Shown in UI only — LinuxServer PUID/PGID in compose are fixed to 1000. */
+	/** Shown in UI only - LinuxServer PUID/PGID in compose are fixed to 1000. */
 	hostOs: HostOs;
 	/**
 	 * When qBittorrent + Gluetun + VPN: add LinuxServer DOCKER_MODS GSP (recommended).
@@ -136,7 +136,7 @@ export interface StackConfiguratorState {
 	davChoice: DavChoice;
 	torrentChoice: TorrentChoice;
 	vpnPreset: VpnPreset;
-	/** Used when vpnPreset === 'protonvpn' — maps to Gluetun Proton WireGuard env vars. */
+	/** Used when vpnPreset === 'protonvpn' - maps to Gluetun Proton WireGuard env vars. */
 	protonVpn: ProtonVpnFields;
 	/** Used when vpnPreset === 'mullvad'. */
 	mullvadVpn: MullvadVpnFields;

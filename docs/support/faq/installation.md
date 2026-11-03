@@ -14,7 +14,7 @@ keywords: [faq, installation, setup, docker, system requirements]
 - 2 CPU cores
 - 2 GB RAM
 - 10 GB disk space (plus media storage)
-- Docker (recommended) or Node.js 20+
+- Docker (recommended) or Node.js 22+
 
 **Recommended:**
 - 4+ CPU cores
@@ -42,7 +42,7 @@ No, but it's recommended for automation. You can:
 
 Yes, but Docker is strongly recommended:
 - **Docker:** Easier setup, consistent environment, better support
-- **Native:** Requires Node.js 20+, npm install, more complex
+- **Native:** Requires Node.js 22+, npm install, more complex
 
 See [Installation](/getting-started/installation) for both methods.
 
@@ -77,6 +77,8 @@ npm start
 ```
 
 ### How do I backup Cinephage?
+
+Cinephage also has a built-in export/import tool at **Settings > System > Backup** that downloads a config/database snapshot from the web UI (and can restore from one) without needing container access. The manual approach below is the file-level alternative:
 
 **Backup:**
 ```bash

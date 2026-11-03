@@ -85,7 +85,7 @@ Cutoff reached: Stop upgrading
 - **Compact** - Smaller files (720p)
 - **Streamer** - Streaming-optimized (HEVC)
 
-**See:** [Set Up Quality Profiles](../guides/configure/quality-profiles)
+**See:** [Set Up Quality Profiles](../guides/configure/quality/quality-profiles)
 
 ### Custom Formats
 
@@ -106,7 +106,7 @@ Custom formats let you define specific preferences beyond basic quality profiles
 - Negative scores decrease likelihood
 - Very negative scores (-1000+) effectively block
 
-**See:** [Custom Formats in Quality Profiles](../guides/configure/quality-profiles#part-4-create-custom-formats)
+**See:** [Custom Formats in Quality Profiles](../guides/configure/quality/quality-profiles#part-4-custom-formats)
 
 ### Cutoff
 
@@ -306,7 +306,7 @@ When a better quality release becomes available, Cinephage can automatically upg
 **Definition:** Background process that searches for monitored content.
 
 **Explanation:**
-Automatic search runs on a schedule (hourly by default) and searches for:
+Automatic search runs on a schedule (each monitoring task has its own configurable interval - missing content search defaults to daily) and searches for:
 
 - Missing monitored items
 - Upgrade opportunities
@@ -347,16 +347,18 @@ Each release receives a score based on multiple factors. Higher scores indicate 
 - HDR format (Dolby Vision, HDR10)
 - Custom formats
 
-**Score Example:**
+**Score Example (using the built-in Quality profile's point values):**
 
 ```
-Base (1080p): 80
-Source (BluRay): +40
-Codec (x265): +20
-Audio (DTS-HD): +20
+Resolution (1080p): 200
+Source (BluRay): +200
+Codec (x265): +30
+Audio (DTS-HD MA): +140
 Custom (Trusted group): +10
-Total: 170
+Total: 580
 ```
+
+Point values are not fixed system-wide - each quality profile assigns its own score to every matched attribute, so the same release can score differently under different profiles.
 
 ## Subtitle Concepts
 
@@ -450,26 +452,19 @@ Unlike traditional downloading, NZB streaming allows you to watch content direct
 - Instant playback
 - Selective downloading
 
-### Circuit breakers
+### Indexer backoff
 
-**Definition:** Pattern that prevents repeated calls to failing services.
+**Definition:** Pattern that prevents repeated calls to a failing indexer.
 
 **Explanation:**
-Circuit breakers protect against cascading failures. If a streaming provider fails repeatedly, the circuit "opens" and stops trying for a period.
+Rather than a classic circuit breaker with open/closed/half-open states, Cinephage tracks each indexer's failure count and applies exponential backoff with jitter: consecutive failures push out the retry time further (starting around a minute, capping around an hour), and Cinephage skips a disabled indexer's requests until that retry time passes. This prevents a single struggling indexer from slowing down or spamming every search.
 
-**States:**
+**Key Points:**
 
-- **Closed** - Normal operation
-- **Open** - Failing, not trying
-- **Half-Open** - Testing if recovered
-
-**Configuration:**
-
-```yaml
-environment:
-  - PROVIDER_MAX_FAILURES=3
-  - PROVIDER_CIRCUIT_HALF_OPEN_MS=30000
-```
+- Backoff is per-indexer, tracked persistently (survives restarts)
+- Delay grows with consecutive failures, up to a cap
+- A small random jitter is added so many indexers don't retry at the exact same moment
+- A successful request resets the failure count
 
 ## Glossary
 

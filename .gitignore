@@ -29,7 +29,7 @@ npm-debug.log*
 *.sublime-project
 *.sublime-workspace
 
-# AI tools — no issue with these being used, we just don't want their
+# AI tools - no issue with these being used, we just don't want their
 # config and cache files littering the repo
 .opencode/
 .claude/

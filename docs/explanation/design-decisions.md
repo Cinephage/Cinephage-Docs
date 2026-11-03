@@ -506,4 +506,4 @@ These decisions serve Cinephage's goal of being a simple, effective self-hosted 
 - [Architecture](architecture) - System architecture details
 - [Concepts](concepts) - Core concepts explained
 - [Workers and Tasks](workers-and-tasks) - Background processing
-- [Contributing](https://github.com/MoldyTaint/Cinephage/blob/main/CONTRIBUTING.md) - Get involved
+- [Contributing](https://github.com/cinephage/cinephage/blob/main/CONTRIBUTING.md) - Get involved

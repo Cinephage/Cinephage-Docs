@@ -29,7 +29,7 @@ The system operates in two distinct modes:
 **Automatic Search:**
 
 - Triggered by monitoring tasks
-- Runs on schedule (hourly by default)
+- Runs on schedule (each monitoring task has its own configurable interval; see [Workers and Tasks](workers-and-tasks))
 - Finds best release automatically
 - No user intervention needed
 
@@ -46,7 +46,7 @@ Automatic search is the hands-off approach to maintaining your library. Once you
 
 **How it works:**
 
-1. Monitoring tasks run on schedule (default: hourly)
+1. Monitoring tasks run on schedule (interval configurable per task; missing-content search defaults to daily)
 2. System checks all monitored items
 3. Searches indexers for missing or upgradable content
 4. Scores and selects best release automatically
@@ -152,51 +152,33 @@ The **Score** column in search results shows how well a release matches your qua
 
 ### Score breakdown
 
-Hover over any score to see the detailed breakdown:
+Hover over any score to see the detailed breakdown by category, for example:
 
 ```
-Base: 80 (1080p)
-Source: +30 (WEB-DL)
-Codec: +20 (x265)
-Audio: +5 (AAC)
+Resolution: 200 (1080p)
+Source: +180 (WEB-DL)
+Codec: +30 (x265)
+Audio: +60 (Dolby Digital)
 Custom: +10 (Preferred group)
-Total: 145
+Total: 480
 ```
+
+(Numbers shown reflect the active quality profile's own point values - they differ between the built-in Quality/Balanced/Compact/Streamer profiles and any custom profile you create.)
 
 ### How scores are calculated
 
-The scoring system evaluates multiple factors:
+Every release is parsed into attributes (resolution, source, codec, audio, HDR, release group, streaming service, flags) and matched against Cinephage's library of custom formats - built-in ones covering resolution, source, codec, audio, HDR, release group tiers, streaming services, and editions, plus any you define yourself. The active quality profile assigns the points for each matched format, and the total score is their sum. There is no single fixed point table shared by every profile; each profile weights formats according to its own priorities (for example, the Quality profile rewards Remux sources and lossless audio heavily, while Balanced/Streamer weight efficient codecs like x265/AV1 more).
 
-**Base Score (Resolution):**
-- 2160p: 100 points
-- 1080p: 80 points
-- 720p: 50 points
-- 480p: 20 points
-
-**Source Bonus:**
-- BluRay: +40 (best quality)
-- WEB-DL: +30 (direct stream rip)
-- HDTV: +10 (broadcast capture)
-- DVD: +5
-
-**Codec Bonus:**
-- AV1: +25 (most efficient)
-- H.265/HEVC: +20
-- H.264/x264: 0 (baseline)
-
-**Audio Bonus:**
-- Dolby Atmos: +25
-- DTS-HD MA: +20
-- TrueHD: +15
-- DD+ (E-AC3): +10
-- DTS: +8
-- AC3: +5
-- AAC: +3
+Two special rules apply on top of the sum:
+- Only the single best-matching HDR format counts (HDR bonuses don't stack).
+- A small set of formats (deceptive retags, CAM/telesync/telecine/screener sources, etc.) are hard-banned - matching one excludes the release outright, not just a large point deduction.
 
 **Custom Formats:**
-- Your defined rules add or subtract points
+- Your defined rules add or subtract points, per profile
 - Can boost preferred groups, block unwanted content
-- Applied after base scoring
+- Scored alongside the built-in formats, not as a separate final step
+
+For the full mechanics and worked examples, see [Quality Scoring](quality-scoring).
 
 ### Why scores matter
 
@@ -215,9 +197,10 @@ Cinephage searches across all your configured indexers simultaneously.
 
 ### How multi-indexer search works
 
-**Parallel Queries:**
-- All enabled indexers are queried at once
-- Results aggregated as they arrive
+**Tiered Queries:**
+- When an item has searchable external IDs (TMDB/IMDB/TVDB), Cinephage tries ID-based search first against indexers that support it, then falls back to text search (title/year) for indexers that don't or when the ID search comes up empty
+- All eligible indexers for the current tier are queried in parallel
+- Per-host rate limiting and concurrency limits keep any one tracker from being hammered, and results are cached briefly to avoid re-querying on rapid repeat searches
 - No single indexer is a bottleneck
 
 **Result Deduplication:**
@@ -316,7 +299,7 @@ Understanding how to use the search system effectively helps you build a better 
 **Best Practices:**
 - Default hourly monitoring is usually sufficient
 - Avoid excessive manual searches
-- Monitor indexer health in **Settings > Indexers**
+- Monitor indexer health in **Settings > Integrations > Indexers**
 
 ### Review before grabbing
 
@@ -346,7 +329,7 @@ Delay profiles add a waiting period before grabbing releases, allowing better qu
 - Avoid initial rush of poor-quality uploads
 
 **Configuration:**
-- Set in **Settings > Delay Profiles**
+- Set in **Settings > Library > Quality Settings > Delay Profiles**
 - Can be per-quality or global
 - Usenet often has shorter delays than torrents
 
@@ -377,7 +360,7 @@ Delay profiles add a waiting period before grabbing releases, allowing better qu
 - [Search and Download](/guides/use/search-and-download) - Practical guide to searching
 - [Quality Scoring](quality-scoring) - Deep dive into scoring algorithm
 - [Configure Indexers](/guides/configure/indexers) - Setting up indexers
-- [Quality Profiles](/guides/configure/quality-profiles) - Configuring quality preferences
-- [Delay Profiles](/guides/configure/delay-profiles) - Managing release timing
+- [Quality Profiles](/guides/configure/quality/quality-profiles) - Configuring quality preferences
+- [Delay Profiles](/guides/configure/quality/delay-profiles) - Managing release timing
 - [Workers and Tasks](workers-and-tasks) - Background processing
 - [Architecture](architecture) - System architecture overview

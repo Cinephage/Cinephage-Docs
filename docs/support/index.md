@@ -57,5 +57,5 @@ Common issues, logs, and debugging steps.
 ## Can't Find What You Need?
 
 - 💬 **[Discord Community](https://discord.gg/scGCBTSWEt)** - Real-time help
-- 🐛 **[GitHub Issues](https://github.com/MoldyTaint/Cinephage/issues)** - Bug reports
+- 🐛 **[GitHub Issues](https://github.com/cinephage/cinephage/issues)** - Bug reports
 - 📖 **[Getting Help](/getting-started/getting-help)** - All support resources

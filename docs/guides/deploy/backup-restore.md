@@ -22,28 +22,39 @@ Create regular backups of your Cinephage configuration and database to prevent d
 
 ## What to Backup
 
-Cinephage stores data in several locations:
+Cinephage's config volume is mounted as `/config` in the Docker image and has two top-level
+folders that matter: `/config/data` (`DATA_DIR`, all application data) and `/config/cache`
+(re-downloadable browser cache for captcha solving). There is no separate `settings/` directory -
+application settings are stored as rows in the SQLite database itself, not as files.
 
 ### Essential data (must backup)
 
-| Location                    | Contents                                 | Size     |
-| --------------------------- | ---------------------------------------- | -------- |
-| `/config/data/cinephage.db` | Main database (movies, series, settings) | 10-100MB |
-| `/config/settings/`    | Application settings                     | 1-5MB    |
+| Location                    | Contents                                                                                                                          | Size     |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| `/config/data/cinephage.db` | Main database - movies, series, **all application settings**, indexers, download clients, quality/scoring profiles, history, etc. | 10-100MB |
+
+Because settings live inside `cinephage.db` (not as separate files), backing up that one file is
+enough to capture your entire configuration. Cinephage also has a built-in, passphrase-encrypted
+configuration export/import under **Settings > System > Backup & Restore** that lets you export
+selected settings sections (system, profiles, downloads, indexers, subtitles, integrations, Live
+TV) to a JSON file and re-import them later - a convenient alternative to a full database restore
+when you only want to move or restore configuration, not library data.
 
 ### Important data (should backup)
 
-| Location            | Contents                        | Size     |
-| ------------------- | ------------------------------- | -------- |
-| `/config/indexers/` | Custom YAML indexer definitions | Varies   |
-| `/config/camoufox/` | Captcha solver data             | 50-100MB |
+| Location                            | Contents                                                                          | Size   |
+| ------------------------------------- | ------------------------------------------------------------------------------------ | ------ |
+| `/config/data/indexers/definitions` | Indexer YAML definitions; custom ones live in the `custom/` subfolder there by default | Varies |
+| `/config/data/channel-logos/`       | Downloaded Live TV channel logo artwork (can be re-downloaded)                    | Varies |
+| `/config/data/external-lists/`      | Cached external list presets                                                       | Varies |
 
 ### Optional data
 
-| Location         | Contents                     | Size      |
-| ---------------- | ---------------------------- | --------- |
-| `/config/cache/` | Cached data (can be rebuilt) | 100MB-1GB |
-| `/config/logs/`  | Application logs             | Varies    |
+| Location                | Contents                                                                                         | Size      |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- | --------- |
+| `/config/cache/`        | Camoufox (anti-bot captcha-solving browser) install cache - re-downloaded automatically if deleted | 50-100MB+ |
+| `/config/data/logs/`    | Application logs                                                                                  | Varies    |
+| `/config/data/backups/` | Cinephage's own scheduled/pre-update DB backups (see Part 5)                                      | Varies    |
 
 ### What not to backup
 
@@ -74,21 +85,18 @@ mkdir -p /path/to/backups/cinephage-$(date +%Y%m%d)
 BACKUP_DIR=/path/to/backups/cinephage-$(date +%Y%m%d)
 CONFIG_DIR=/path/to/your/cinephage/config
 
-# Copy database
-cp "$CONFIG_DIR/data/cinephage.db" "$BACKUP_DIR/"
+# The database (cinephage.db) contains all application settings, so copying
+# the whole data/ directory captures everything that matters.
+cp -r "$CONFIG_DIR/data" "$BACKUP_DIR/"
+```
 
-# Copy settings
-cp -r "$CONFIG_DIR/settings" "$BACKUP_DIR/"
+To keep the backup smaller, you can exclude the `logs/` and `backups/` subfolders (Cinephage's
+own database backups, see Part 5) since they are not needed to restore configuration or library
+data:
 
-# Copy custom indexers (if any)
-if [ -d "$CONFIG_DIR/indexers" ]; then
-    cp -r "$CONFIG_DIR/indexers" "$BACKUP_DIR/"
-fi
-
-# Copy Camoufox data (optional)
-if [ -d "$CONFIG_DIR/camoufox" ]; then
-    cp -r "$CONFIG_DIR/camoufox" "$BACKUP_DIR/"
-fi
+```bash
+cp -r "$CONFIG_DIR/data" "$BACKUP_DIR/" \
+    && rm -rf "$BACKUP_DIR/data/logs" "$BACKUP_DIR/data/backups"
 ```
 
 ### Step 4: create archive
@@ -165,7 +173,7 @@ cd /opt/cinephage && docker compose down
 
 # Create backup
 tar -czf "$BACKUP_DIR/cinephage-$DATE.tar.gz" -C "$CONFIG_DIR" \
-    data settings indexers 2>/dev/null
+    data 2>/dev/null
 
 # Start Cinephage
 cd /opt/cinephage && docker compose up -d
@@ -262,25 +270,10 @@ CONFIG_DIR=/path/to/your/cinephage/config
 RESTORE_DIR=/tmp/cinephage-restore/cinephage-20250316
 
 # Backup current config (just in case)
-mv "$CONFIG_DIR" "$CONFIG_DIR.backup.$(date +%Y%m%d)"
-mkdir -p "$CONFIG_DIR"
+mv "$CONFIG_DIR/data" "$CONFIG_DIR/data.backup.$(date +%Y%m%d)"
 
-# Restore database
-mkdir -p "$CONFIG_DIR/data"
-cp "$RESTORE_DIR/data/cinephage.db" "$CONFIG_DIR/data/"
-
-# Restore settings
-cp -r "$RESTORE_DIR/settings" "$CONFIG_DIR/"
-
-# Restore custom indexers (if backed up)
-if [ -d "$RESTORE_DIR/indexers" ]; then
-    cp -r "$RESTORE_DIR/indexers" "$CONFIG_DIR/"
-fi
-
-# Restore Camoufox (if backed up)
-if [ -d "$RESTORE_DIR/camoufox" ]; then
-    cp -r "$RESTORE_DIR/camoufox" "$CONFIG_DIR/"
-fi
+# Restore the whole data/ directory (database + indexer defs + channel logos, etc.)
+cp -r "$RESTORE_DIR/data" "$CONFIG_DIR/"
 
 # Fix permissions
 chown -R 1000:1000 "$CONFIG_DIR"  # Adjust UID:GID as needed
@@ -352,32 +345,39 @@ If your URL changed:
    ```
 4. Restart Cinephage
 
-## Part 5: Database-Only Backup
+## Part 5: Database-Only Backup (Built-in)
 
-For quick database backups without stopping:
+Cinephage's Docker image does not include the `sqlite3` CLI, so `docker exec cinephage sqlite3 ...`
+will not work inside the container. Instead, use the built-in database backup feature, which
+performs a hot, consistent backup (including in-flight WAL data) without stopping the app:
+
+- **Automatic:** a scheduled "Database Backup" task runs daily by default and writes a `.db` file
+  to `/config/data/backups/scheduled/` (configurable directory and retention count under
+  **Settings > System > Backup & Restore**).
+- **Automatic, pre-update:** before any database schema migration runs (e.g. after upgrading to a
+  new version), Cinephage automatically takes a backup to `/config/data/backups/pre-update/`
+  (the 5 most recent are kept) so you can roll back if an upgrade goes wrong.
+- **Manual:** click **Run Backup Now** on the same Settings page, or `POST` to
+  `/api/settings/system/db-backup/run`, to trigger an on-demand backup immediately.
+
+To pull a copy off the host, just copy the file from the mounted config volume:
 
 ```bash
-# While Cinephage is running
-docker exec cinephage sqlite3 /config/data/cinephage.db ".backup /config/data/cinephage-backup.db"
+# List backups Cinephage has already created
+ls /path/to/cinephage/config/data/backups/scheduled/
 
-# Copy backup
-cp /path/to/cinephage/config/data/cinephage-backup.db /path/to/backups/
-
-# Remove temp backup
-docker exec cinephage rm /config/data/cinephage-backup.db
+# Copy the most recent one out
+cp /path/to/cinephage/config/data/backups/scheduled/cinephage-backup-*.db /path/to/backups/
 ```
-
-This creates a consistent backup without stopping the application.
 
 ## Backup Strategy Recommendations
 
 ### Frequency
 
-| Data Type   | Backup Frequency | Retention |
-| ----------- | ---------------- | --------- |
-| Database    | Daily            | 30 days   |
-| Settings    | Weekly           | 90 days   |
-| Full config | Weekly           | 30 days   |
+| Data Type                              | Backup Frequency | Retention |
+| ----------------------------------------- | ------------------ | ----------- |
+| Database (`cinephage.db` - includes all settings) | Daily             | 30 days   |
+| Full `/config/data` directory          | Weekly            | 30 days   |
 
 ### Storage locations
 
@@ -400,15 +400,13 @@ Test restore process periodically:
 
 ### Database locked during backup
 
-**Problem:** Cannot copy database file
+**Problem:** Cannot copy database file while Cinephage is running
 
-**Solution:**
-
-```bash
-# Use SQLite backup command
-docker exec cinephage sqlite3 /config/data/cinephage.db ".backup /tmp/backup.db"
-docker cp cinephage:/tmp/backup.db /path/to/backups/
-```
+**Solution:** Use the built-in hot backup instead of copying the live file directly - either wait
+for the daily scheduled backup, or trigger one on demand from **Settings > System > Backup &
+Restore** ("Run Backup Now") / `POST /api/settings/system/db-backup/run`. See Part 5. The
+`sqlite3` CLI is not installed in the Cinephage container, so `docker exec cinephage sqlite3 ...`
+will not work.
 
 ### Backup too large
 
@@ -416,10 +414,10 @@ docker cp cinephage:/tmp/backup.db /path/to/backups/
 
 **Solutions:**
 
-- Exclude cache directory
+- Exclude the `/config/cache/` directory (re-downloadable Camoufox browser cache)
+- Exclude `/config/data/logs/` and `/config/data/backups/`
 - Compress with higher level: `tar -czf` (already compressed)
-- Use incremental backups
-- Backup only database and settings
+- Backup only the database (`/config/data/cinephage.db`), which holds all settings
 
 ### Restore fails
 
@@ -429,7 +427,7 @@ docker cp cinephage:/tmp/backup.db /path/to/backups/
 
 - Check backup file is not corrupt: `tar -tzf backup.tar.gz`
 - Verify file permissions after restore
-- Check database integrity: `sqlite3 data/cinephage.db "PRAGMA integrity_check;"`
+- Check database integrity from the host (if you have a local `sqlite3` install): `sqlite3 data/cinephage.db "PRAGMA integrity_check;"`
 - Restore to fresh config directory
 
 ### Version compatibility

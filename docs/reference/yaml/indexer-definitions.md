@@ -12,944 +12,520 @@ This reference documents the YAML format for defining custom indexers in Cinepha
 
 ## Overview
 
-Cinephage uses a **unified YAML-only indexer architecture**. All indexers are defined entirely through YAML files - no code changes needed to add new indexers.
+Cinephage uses a **unified YAML-only indexer architecture**. All indexers are defined entirely through YAML files - no code changes needed to add new indexers. The format is derived from the Cardigann format used by Jackett/Prowlarr community indexer definitions, extended with Cinephage-specific fields for usenet and internal streaming protocols.
 
 ### Architecture features
 
 - **YAML-only definitions** - All indexer logic in declarative YAML files
-- **Protocol handlers** - Separate handlers for torrent, usenet, and streaming protocols
-- **Dynamic capability discovery** - Automatically fetches `/api?t=caps` to determine supported search parameters
-- **Enhanced health tracking** - Tracks consecutive failures with exponential backoff
-- **Protocol-specific settings** - Custom columns for torrent, usenet, and streaming configurations
+- **Cardigann-compatible core** - `caps`, `login`, `search`, `download` blocks follow the Jackett/Prowlarr definition format
+- **Protocol handlers** - `torrent`, `usenet`, and `streaming` protocols, each with an optional `protocolConfig` block
+- **CSS-selector based scraping** for HTML indexers, or JSON/XML response parsing for API-based ones (Newznab, Torznab)
 
 ### Protocol support
 
-| Protocol | Handler | Features |
-|----------|---------|----------|
-| **Torrent** | `torrent` | Magnet links, .torrent files, CSS selectors |
-| **Usenet** | `usenet` | Newznab API, NZB downloads |
-| **Streaming** | `streaming` | HLS streams, CORS proxy integration |
-
-### Dynamic capability discovery
-
-Newznab-compatible indexers (including UNIT3D trackers) automatically discover capabilities:
-
-```yaml
-name: My UNIT3D Tracker
-protocol: usenet
-categories:
-  - movies
-  - tv
-settings:
-  apiUrl: https://tracker.example.com/api
-  apiKey: your-api-key
-  # Capabilities fetched from /api?t=caps automatically
-```
-
-This allows the indexer to:
-- Know which search parameters are supported
-- Optimize search requests
-- Handle different Newznab implementations
+| Protocol | `protocol:` value | Notes |
+|----------|---------------------|-------|
+| **Torrent** | `torrent` | HTML scraping (CSS selectors) or Torznab (XML) |
+| **Usenet** | `usenet` | Newznab XML API |
+| **Streaming** | `streaming` | Internal library database queries, or external HTTP APIs |
 
 ## YAML Structure
 
-### Basic template
+### Root fields
 
-```yaml
-name: Display Name # Human-readable name (required)
-protocol: torrent # torrent, usenet, or streaming (required)
-categories: # Supported content types (required)
-  - movies
-  - tv
-enabled: true # Enable/disable (default: true)
-priority: 25 # Search priority 1-50 (default: 25)
-description: Optional description
-settings: # Protocol-specific settings
-  # See protocol sections below
-```
+These map directly to the Zod schema in `yamlDefinition.ts` that validates every definition:
 
-### Required fields
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Unique identifier (filename without `.yaml`, also used as indexer type) |
+| `name` | string | Yes | Display name shown in UI |
+| `description` | string | No | Optional description |
+| `type` | string | No | `public`, `semi-private`, or `private` (default: `public`) |
+| `language` | string | No | Content language, e.g. `en-US` (default: `en-US`) |
+| `encoding` | string | No | Response encoding (default: `UTF-8`) |
+| `protocol` | string | No | `torrent`, `usenet`, or `streaming` (default: `torrent`) |
+| `links` | string[] | Yes | Base URLs for the indexer (first is primary) |
+| `legacylinks` | string[] | No | Deprecated/fallback URLs |
+| `replaces` | string[] | No | Indexer IDs this definition replaces (migration) |
+| `requestdelay` | number | No | Minimum delay between requests (seconds) |
+| `requesttimeout` | number | No | Per-request HTTP timeout in ms (overrides the default 30s) |
+| `followredirect` | boolean | No | Follow HTTP redirects |
+| `testlinktorrent` | boolean | No | Validate `.torrent` download links during testing |
+| `certificates` | string[] | No | Accepted TLS certificate fingerprints |
+| `internal` | boolean | No | Hides the definition from the indexer picker; seeded/owned by a Cinephage subsystem (default: `false`) |
+| `protocolConfig` | object | No | Protocol-specific config - see [Protocol configuration](#protocol-configuration) |
+| `settings` | array | No | User-configurable fields - see [Settings fields](#settings-fields) |
+| `caps` | object | Yes | Search capabilities - see [Capabilities block](#capabilities-block) |
+| `login` | object | No | Authentication configuration - see [Authentication](#authentication) |
+| `ratio` | object | No | Ratio-tracking selector (torrent sites) |
+| `search` | object | Yes | Search request/parsing configuration - see [Search block](#search-block) |
+| `download` | object | No | Download-link resolution - see [Download block](#download-block) |
 
-| Field        | Type   | Description                                            |
-| ------------ | ------ | ------------------------------------------------------ |
-| `id`         | string | Unique identifier (alphanumeric, hyphens, underscores) |
-| `name`       | string | Display name shown in UI                               |
-| `protocol`   | string | `torrent`, `usenet`, or `streaming`                    |
-| `categories` | array  | Content types: `movies`, `tv`                          |
-| `settings`   | object | Protocol-specific configuration                        |
+There is no `enabled`, `priority`, or `categories: [movies, tv]` field at the YAML level - `enabled` and search priority are set per-instance in the UI/database when an indexer is added from a definition, not in the YAML file itself.
 
-### Optional fields
+### Settings fields
 
-| Field         | Type    | Default | Description                               |
-| ------------- | ------- | ------- | ----------------------------------------- |
-| `enabled`     | boolean | `true`  | Whether indexer is active                 |
-| `priority`    | integer | `25`    | Search priority (lower = higher priority) |
-| `description` | string  | -       | Optional description                      |
-
-## Torrent Indexers
-
-### Basic torrent definition
-
-```yaml
-name: Example Torrent Site
-protocol: torrent
-categories:
-  - movies
-  - tv
-enabled: true
-priority: 20
-settings:
-  baseUrl: https://example.com
-  search:
-    path: /search?q={{query}}
-    method: GET
-  selectors:
-    rows: table.results tr
-    title: td.title a
-    magnet: td.magnet a
-    torrent: td.download a
-    size: td.size
-    seeders: td.seeders
-    leechers: td.leechers
-    date: td.date
-```
-
-### Search configuration
+`settings` is an **array** of field definitions (not a plain object), rendered as UI inputs when adding an indexer:
 
 ```yaml
 settings:
-  baseUrl: https://example.com
-  search:
-    path: /search?q={{query}}&page={{page}}&category={{category}}
-    method: GET
-    headers:
-      User-Agent: Mozilla/5.0
-      Accept: text/html
-    cookies:
-      session: abc123
+  - name: apikey
+    type: password
+    label: API Key
+    required: false
+  - name: downloadlink
+    type: select
+    label: Download link
+    default: 'magnet:'
+    options:
+      'magnet:': Magnet
+      'http://itorrents.org/': iTorrents.org
 ```
 
-**Search Variables:**
+| Field | Type | Description |
+|-------|------|--------------|
+| `name` | string | Setting key, referenced in templates as `{{ .Config.<name> }}` |
+| `type` | string | `text`, `password`, `checkbox`, `select`, `info`, `info_cookie`, `info_cloudflare`, `info_flaresolverr`, `info_useragent`, `info_category_8000`, or `cardigannCaptcha` |
+| `label` | string | Optional (info types often omit it) |
+| `default` | string \| boolean \| number | Default value |
+| `required` | boolean | Whether the field must be filled in |
+| `options` | object | For `select` type: `{ value: label }` |
 
-| Variable       | Description  | Example          |
-| -------------- | ------------ | ---------------- |
-| `{{query}}`    | Search term  | "Inception 2010" |
-| `{{page}}`     | Page number  | 1, 2, 3          |
-| `{{category}}` | Category ID  | movies, tv       |
-| `{{year}}`     | Release year | 2010             |
+## Protocol configuration
 
-### CSS selectors
-
-Define how to extract data from HTML:
+### Torrent (`protocolConfig.torrent`)
 
 ```yaml
-selectors:
-  rows: string # CSS selector for result rows
-  title: string # Title element within row
-  magnet: string # Magnet link element
-  torrent: string # Torrent file link element
-  size: string # File size element
-  seeders: string # Seeders count element
-  leechers: string # Leechers count element
-  date: string # Upload date element
-  category: string # Category element
+protocolConfig:
+  torrent:
+    supportsMagnet: true      # default: true
+    supportsInfoHash: true    # default: true
+    freeleechPatterns: ["FREELEECH"]
+    internalPatterns: ["INTERNAL"]
 ```
 
-**Selector Examples:**
+### Usenet (`protocolConfig.usenet`)
 
 ```yaml
-selectors:
-  rows: tr.result-row
-  title: td.name a
-  magnet: a[href^="magnet:"]
-  torrent: a[href$=".torrent"]
-  size: td.size text() # Extract text content
-  seeders: td.peers span.seeders
+protocolConfig:
+  usenet:
+    apiType: newznab           # newznab | spotweb | custom (default: newznab)
+    supportsCategories: true   # default: true
+    defaultApiPath: /api       # default: /api
+    extendedAttributes:
+      - name: size
+        attribute: size
 ```
 
-### Attribute extraction
-
-Extract specific attributes:
+### Streaming (`protocolConfig.streaming`)
 
 ```yaml
-selectors:
-  magnet:
-    selector: a.magnet-link
-    attribute: href # Extract href attribute
-
-  title:
-    selector: a.title
-    attribute: title # Extract title attribute
-
-  size:
-    selector: td.size
-    regex: '(\d+\.?\d*)\s*(GB|MB|KB)' # Extract with regex
+protocolConfig:
+  streaming:
+    type: internal          # internal (local DB) | external (HTTP), default: external
+    dataSource: database    # database | http, default: http
+    qualityTiers: ['4k', '1080p', '720p', '480p']
 ```
 
-### Authentication
+## Capabilities block
 
-For sites requiring login:
-
-```yaml
-settings:
-  baseUrl: https://example.com
-  auth:
-    type: cookie
-    cookies:
-      uid: your-user-id
-      pass: your-pass-key
-
-  # Or using headers
-  search:
-    headers:
-      Authorization: Bearer YOUR_API_KEY
-      X-API-Key: YOUR_KEY
-```
-
-### Advanced: login flow
-
-For sites requiring form login:
+`caps` is **required** and describes what the indexer can search for:
 
 ```yaml
-settings:
-  baseUrl: https://example.com
-  auth:
-    type: form
-    loginUrl: /login
-    usernameField: username
-    passwordField: password
-    submitButton: input[type="submit"]
-    successCheck: .user-profile # Element that exists after login
-```
-
-## Usenet Indexers (Newznab)
-
-### Standard Newznab
-
-```yaml
-name: NZBGeek
-protocol: usenet
-categories:
-  - movies
-  - tv
-settings:
-  apiUrl: https://api.nzbgeek.info/
-  apiKey: your-api-key
+caps:
   categories:
-    movies: 2000
-    tv: 5000
-  timeout: 30
-  retries: 3
+    '2000': Movies
+    '5000': TV
+  categorymappings:
+    - id: 42
+      cat: Movies/HD
+      desc: 'Movies/HD'
+      default: true
+  modes:
+    search: [q]
+    movie-search: [q, imdbid, tmdbid]
+    tv-search: [q, imdbid, tvdbid, season, ep]
+  searchFormats:
+    episode: [standard, absolute]
+    movie: [standard]
 ```
 
-### Newznab settings
+| Field | Description |
+|-------|-------------|
+| `categories` | Map of Newznab category ID (as a string key) to display name |
+| `categorymappings` | Array mapping the indexer's own category IDs to a Newznab `cat` name, with an optional `default: true` |
+| `modes` | Supported search modes and the query parameters each accepts |
+| `allowrawsearch` | Whether raw/unstructured search queries are permitted |
+| `searchFormats.episode` | Preferred episode formats, in order: `standard` (S01E05), `european` (1x05), `compact` (105), `daily` (2024.01.15), `absolute` (125, for anime) |
+| `searchFormats.movie` | Preferred movie formats: `standard`, `yearOnly`, `noYear` |
+
+## Authentication
+
+The `login` block supports several `method` values: `post`, `form`, `cookie`, `get`, `oneurl`, `apikey`, `basic`, `passkey`, `none`.
+
+### Cookie authentication
 
 ```yaml
-settings:
-  apiUrl: string # API endpoint URL
-  apiKey: string # Your API key
-  username: string # Username (if required)
-  password: string # Password (if required)
-
-  categories: # Category mappings
-    movies: integer # Movies category ID
-    tv: integer # TV category ID
-
-  timeout: integer # Request timeout seconds (default: 30)
-  retries: integer # Retry attempts (default: 3)
-  rateLimit: integer # Requests per minute (optional)
+login:
+  method: cookie
+  cookies:
+    - uid={{ .Config.uid }}
+    - pass={{ .Config.pass }}
 ```
 
-### Common Newznab categories
+### Form login
 
-| ID   | Category       |
-| ---- | -------------- |
-| 2000 | Movies         |
+```yaml
+login:
+  method: form
+  path: /login.php
+  form: '#loginform'
+  inputs:
+    username: '{{ .Config.username }}'
+    password: '{{ .Config.password }}'
+  error:
+    - selector: '.error'
+  test:
+    path: /
+    selector: '.logout'
+```
+
+### API key authentication
+
+```yaml
+login:
+  method: apikey
+  apikey:
+    location: query      # header | query | both (default: query)
+    queryParam: apikey    # default: apikey
+    headerName: X-Api-Key # default: X-Api-Key
+    source: '{{ .Config.apikey }}'
+```
+
+### Passkey authentication (URL-embedded)
+
+```yaml
+login:
+  method: passkey
+  passkey:
+    urlTemplate: '/torrents/rss/{{ .Config.passkey }}'
+```
+
+### Basic HTTP authentication
+
+```yaml
+login:
+  method: basic
+  basic:
+    username: '{{ .Config.username }}'
+    password: '{{ .Config.password }}'
+```
+
+There is no generic `auth: { type: cookie | form }` block at the top level of `settings` - authentication is configured entirely under the root-level `login` block.
+
+## Search block
+
+`search` is **required**. It has an HTTP mode (the default, `type: http`) and a database mode (`type: database`, used by internal streaming indexers).
+
+### HTTP search (torrent/usenet, and external streaming)
+
+```yaml
+search:
+  paths:
+    - path: 'search/{{ .Keywords }}/1/'
+      method: get
+  keywordsfilters:
+    - name: re_replace
+      args: ['\bS(20\d{2})\b', '$1']
+  rows:
+    selector: 'tr:has(a[href^="/torrent/"])'
+  fields:
+    title:
+      selector: td[class^="coll-1"] a[href^="/torrent/"]
+    download:
+      selector: td[class^="coll-1"] a[href^="/torrent/"]
+      attribute: href
+    category:
+      selector: td[class^="coll-1"] a[href^="/sub/"]
+      attribute: href
+      optional: true
+      default: '42'
+    seeders:
+      selector: td[class^="coll-2"]
+    leechers:
+      selector: td[class^="coll-3"]
+    size:
+      selector: td[class^="coll-4"]
+    date:
+      selector: td[class^="coll-date"]
+      optional: true
+      filters:
+        - name: fuzzytime
+```
+
+The result container/fields are under `rows`/`fields`, **not** a `selectors:` block. `fields` is a map of field name to either a `SelectorBlock` object (`selector`, `attribute`, `text`, `default`, `optional`, `filters`, `case`, `remove`) or, for internal use, a plain string. There is no dedicated `magnet`/`torrent` shorthand field - the download URL is extracted via the `download` field (and/or the separate `download` block below) using `selector`/`attribute`.
+
+For JSON/XML APIs (e.g. Newznab), set `response.type`:
+
+```yaml
+search:
+  paths:
+    - path: /api
+      method: get
+      inputs:
+        t: search
+        q: '{{ .Keywords }}'
+        apikey: '{{ .Config.apikey }}'
+  response:
+    type: xml     # json | html | xml
+  rows:
+    selector: rss channel item
+  fields:
+    title:
+      selector: title
+    download:
+      selector: link
+    date:
+      selector: pubDate
+      filters:
+        - name: dateparse
+          args: 'ddd, DD MMM YYYY HH:mm:ss ZZ'
+```
+
+### Template variables
+
+Values inside `path`, `inputs`, and selector `filters` use Go-template-style variables:
+
+| Variable | Description |
+|----------|--------------|
+| `{{ .Keywords }}` | The search query string |
+| `{{ .Query.Season }}`, `{{ .Query.Ep }}` | Season/episode numbers |
+| `{{ .Query.IMDBIDShort }}`, `{{ .Query.TMDBID }}`, `{{ .Query.TVDBID }}` | External IDs |
+| `{{ .Categories }}` | Resolved category list for the request (often used with the `join` template function) |
+| `{{ .Config.<name> }}` | A value from a `settings` field |
+
+### Database search (internal streaming indexers)
+
+```yaml
+search:
+  type: database
+  movieQuery:
+    table: movies
+    conditions:
+      - field: tmdb_id
+        value: '{{ .Query.TMDBID }}'
+    outputMapping:
+      guid: 'stream://movie/{{ .Row.id }}'
+      title: '{{ .Row.title }}'
+      downloadUrl: 'stream://movie/{{ .Row.tmdb_id }}'
+    contentType: movie
+```
+
+`movieQuery`/`tvQuery`/`episodeQuery` each take a `table`, optional `join`, optional `conditions` (WHERE clauses with `field`/`operator`/`value`), and a required `outputMapping` (`guid`, `title`, `downloadUrl` required; `size`, `publishDate`, `commentsUrl`, `quality`, `provider` optional).
+
+## Download block
+
+For sites where the download link must be resolved from a details page (rather than being present directly in the search results):
+
+```yaml
+download:
+  selectors:
+    - selector: 'ul li a[href^="{{ .Config.downloadlink }}"]'
+      attribute: href
+    - selector: 'ul li a[href^="{{ .Config.downloadlink2 }}"]'
+      attribute: href
+  before:
+    path: '{{ .Result.Details }}'
+  infohash:
+    hash:
+      selector: '.infohash'
+```
+
+## Common Newznab categories
+
+| ID | Category |
+|------|-------------|
+| 2000 | Movies |
 | 2010 | Movies/Foreign |
-| 2040 | Movies/HD      |
-| 2050 | Movies/BluRay  |
-| 2060 | Movies/3D      |
-| 5000 | TV             |
-| 5040 | TV/HD          |
-| 5050 | TV/Foreign     |
+| 2040 | Movies/HD |
+| 2045 | Movies/UHD |
+| 2050 | Movies/BluRay |
+| 2060 | Movies/3D |
+| 5000 | TV |
+| 5040 | TV/HD |
+| 5045 | TV/UHD |
+| 5070 | TV/Anime |
 | 5080 | TV/Documentary |
 
-## Streaming Indexers
-
-### Basic streaming definition
-
-```yaml
-name: Example Streaming
-protocol: streaming
-categories:
-  - movies
-  - tv
-settings:
-  baseUrl: https://api.example.com
-  apiKey: your-api-key
-  timeout: 30
-  endpoints:
-    search: /v1/search
-    resolve: /v1/resolve
-```
-
-### Streaming settings
-
-```yaml
-settings:
-  baseUrl: string # Base API URL
-  apiKey: string # API key
-  apiSecret: string # API secret (if required)
-
-  timeout: integer # Request timeout seconds (default: 30)
-
-  endpoints: # API endpoints
-    search: string # Search endpoint
-    resolve: string # Stream resolution endpoint
-
-  headers: # Custom headers
-    X-Custom-Header: value
-```
-
-## Torznab Indexers (via Jackett/Prowlarr)
-
-```yaml
-name: 1337x via Jackett
-protocol: torrent
-categories:
-  - movies
-  - tv
-settings:
-  apiUrl: http://jackett:9117/api/v2.0/indexers/1337x/results/torznab/
-  apiKey: your-jackett-api-key
-  categories:
-    movies: 2000
-    tv: 5000
-```
-
-## Practical Examples
-
-This section provides complete, working indexer definitions demonstrating common patterns and configurations.
-
-### Example 1: basic public tracker
-
-Public tracker with simple search form and no authentication.
-
-**When to use this pattern:**
-- Open torrent sites accessible without login
-- Sites using standard HTML table layouts
-- Public domain or open trackers
-
-```yaml
-# Basic public torrent tracker
-# 1337x.to - Simple search with table results
-name: 1337x
-protocol: torrent
-categories:
-  - movies
-  - tv
-priority: 25
-settings:
-  baseUrl: https://1337x.to
-  search:
-    # {{query}} is URL-encoded automatically
-    path: /search/{{query}}/1/
-    method: GET
-  selectors:
-    # Each row in the results table
-    rows: table.table-list tbody tr
-    # Second link in the name column (first is category)
-    title: td.name a:nth-child(2)
-    # Direct magnet link
-    magnet: td.coll-1 a[href^="magnet:"]
-    # Size column text
-    size: td.size
-    # Seeders count
-    seeders: td.seeds
-    # Leechers count
-    leechers: td.leeches
-    # Upload date
-    date: td.date
-```
-
-### Example 2: private tracker with authentication
-
-Private tracker requiring cookie-based authentication.
-
-**When to use this pattern:**
-- Private trackers requiring login
-- Sites with cookie/session-based auth
-- When API keys are not available
-
-```yaml
-# Private tracker with cookie authentication
-# Requires session cookies from browser
-name: Private Tracker
-protocol: torrent
-categories:
-  - movies
-  - tv
-priority: 10
-settings:
-  baseUrl: https://tracker.example.com
-  auth:
-    type: cookie
-    cookies:
-      # Get these from browser dev tools after logging in
-      uid: 12345
-      pass: abcdef1234567890
-      session: xyz789
-  search:
-    path: /torrents.php?search={{query}}&category={{category}}
-    headers:
-      # Some sites check User-Agent
-      User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
-  selectors:
-    rows: table.torrents tr.torrent
-    title: td.name a
-    # Direct .torrent download link
-    torrent: td.download a
-    size: td.size
-    seeders: td.seeders
-    leechers: td.leechers
-    date: td.date
-```
-
-### Example 3: Usenet indexer (Newznab API)
-
-Standard Newznab-compatible usenet indexer.
-
-**When to use this pattern:**
-- Newznab-compatible sites (NZBGeek, DrunkenSlug, etc.)
-- UNIT3D-based private trackers with API
-- Any site supporting Newznab standard
-
-```yaml
-# Usenet indexer using Newznab API
-# NZBGeek - Newznab-compatible
-name: NZBGeek
-protocol: usenet
-categories:
-  - movies
-  - tv
-priority: 5
-settings:
-  # API endpoint (trailing slash required for some)
-  apiUrl: https://api.nzbgeek.info/
-  # Your personal API key from account settings
-  apiKey: YOUR_API_KEY_HERE
-  # Category mapping to Newznab IDs
-  categories:
-    movies: 2000
-    tv: 5000
-  # Connection settings
-  timeout: 30
-  retries: 3
-  rateLimit: 60  # Max requests per minute
-```
-
-### Example 4: torznab via Jackett
-
-Torrent indexer accessed through Jackett's Torznab API.
-
-**When to use this pattern:**
-- Accessing trackers through Jackett/Prowlarr
-- Unified API for multiple torrent sources
-- When direct access is not possible
-
-```yaml
-# Torznab indexer via Jackett
-# Accesses torrent sites through Jackett's API
-name: 1337x via Jackett
-protocol: torrent
-categories:
-  - movies
-  - tv
-priority: 15
-settings:
-  # Jackett torznab endpoint for specific indexer
-  apiUrl: http://jackett:9117/api/v2.0/indexers/1337x/results/torznab/
-  # Jackett API key from Jackett UI
-  apiKey: your-jackett-api-key
-  categories:
-    movies: 2000
-    tv: 5000
-  timeout: 30
-```
-
-### Example 5: advanced multi-page search
-
-Indexer with pagination support and complex selectors.
-
-**When to use this pattern:**
-- Sites with paginated results
-- Complex HTML structures
-- When extracting additional metadata
-
-```yaml
-# Advanced tracker with pagination and complex selectors
-name: Advanced Tracker
-protocol: torrent
-categories:
-  - movies
-  - tv
-settings:
-  baseUrl: https://tracker.example.com
-  search:
-    # Page variable for pagination
-    path: /search?q={{query}}&p={{page}}&cat={{category}}
-    method: GET
-  selectors:
-    rows: div.torrent-row
-    # Extract title from data attribute
-    title:
-      selector: a.torrent-title
-      attribute: data-title
-    # Extract magnet from href
-    magnet:
-      selector: a[href^="magnet:"]
-      attribute: href
-    # Extract size with regex
-    size:
-      selector: span.size
-      regex: '([\d.]+\s*[GMTK]B)'
-    # Extract seeders, remove non-numeric
-    seeders:
-      selector: span.seeders
-      regex: '(\d+)'
-    # Category extraction
-    category:
-      selector: span.category
-      attribute: data-category
-```
-
-### Example 6: special date parsing
-
-Indexer with custom date format parsing.
-
-**When to use this pattern:**
-- Non-standard date formats
-- Relative dates ("2 hours ago")
-- Multiple date formats on same site
-
-```yaml
-# Tracker with custom date parsing
-name: Date Format Tracker
-protocol: torrent
-categories:
-  - movies
-  - tv
-settings:
-  baseUrl: https://tracker.example.com
-  search:
-    path: /search?q={{query}}
-  selectors:
-    rows: tr.result
-    title: td.title a
-    magnet: td.magnet a
-    size: td.size
-    seeders: td.seeders
-    # Date with multiple format support
-    date:
-      selector: td.date
-      # Supports common formats automatically
-      # ISO 8601: 2024-01-15
-      # US: 01/15/2024
-      # European: 15/01/2024
-      # Unix timestamp
-      # Relative: "2 hours ago", "Yesterday"
-```
-
-### Example 7: unit3d private tracker
-
-UNIT3D-based private tracker with full API support.
-
-**When to use this pattern:**
-- Modern private trackers using UNIT3D
-- API-based authentication
-- Dynamic capability discovery
-
-```yaml
-# UNIT3D private tracker with Newznab API
-# OldToons.World - Classic animation tracker
-name: OldToons.World
-protocol: usenet
-categories:
-  - tv
-enabled: true
-priority: 15
-description: Private UNIT3D tracker for classic animated content
-settings:
-  apiUrl: https://oldtoons.world/api
-  apiKey: YOUR_API_KEY_HERE
-  categories:
-    tv: 5000
-  timeout: 30
-  retries: 3
-  rateLimit: 60
-```
-
-### Example 8: streaming provider
-
-Basic streaming service indexer.
-
-**When to use this pattern:**
-- HLS/DASH streaming services
-- API-based content providers
-- Sites requiring stream resolution
-
-```yaml
-# Streaming provider with API
-name: Streaming Provider
-protocol: streaming
-categories:
-  - movies
-  - tv
-priority: 5
-settings:
-  baseUrl: https://api.streaming.example.com
-  apiKey: YOUR_API_KEY
-  timeout: 30
-  endpoints:
-    # Search for content
-    search: /v1/search
-    # Resolve stream URLs
-    resolve: /v1/resolve
-```
-
-## Common Patterns
-
-This section describes recurring patterns across indexer definitions.
-
-### Authentication methods
-
-#### Cookie Authentication
-
-For sites requiring session cookies.
-
-```yaml
-auth:
-  type: cookie
-  cookies:
-    uid: "your-user-id"
-    pass: "your-pass-key"
-    session: "session-token"
-```
-
-#### Form Login
-
-For sites with traditional login forms.
-
-```yaml
-auth:
-  type: form
-  loginUrl: /login
-  usernameField: username
-  passwordField: password
-  submitButton: input[type="submit"]
-  successCheck: .user-profile
-```
-
-#### API Key Authentication
-
-For API-based access.
-
-```yaml
-# In search headers
-search:
-  headers:
-    Authorization: Bearer YOUR_API_KEY
-    X-API-Key: YOUR_KEY
-
-# Or in settings
-settings:
-  apiKey: YOUR_API_KEY
-```
-
-### Search field mapping
-
-Map Cinephage search parameters to indexer fields.
-
-| Cinephage Field | Variable | Example Value |
-|----------------|----------|---------------|
-| Search query | `{{query}}` | "Inception 2010" |
-| Page number | `{{page}}` | 1, 2, 3 |
-| Category | `{{category}}` | 2000, 5000 |
-| Year | `{{year}}` | 2010 |
-
-**URL construction:**
-
-```yaml
-search:
-  # Basic keyword search
-  path: /search?q={{query}}
-  
-  # With pagination
-  path: /search?q={{query}}&p={{page}}
-  
-  # With category filtering
-  path: /search?q={{query}}&cat={{category}}&page={{page}}
-  
-  # Complex with all parameters
-  path: /browse?search={{query}}&category={{category}}&page={{page}}&year={{year}}
-```
-
-### Result extraction
-
-Standard fields to extract from search results.
-
-```yaml
-selectors:
-  # Required fields
-  rows: string           # Container for each result
-  title: string          # Release name/title
-  
-  # At least one download method required
-  magnet: string         # Magnet link
-  torrent: string        # Direct .torrent link
-  
-  # Optional metadata
-  size: string           # File size (e.g., "1.5 GB")
-  seeders: string        # Number of seeders
-  leechers: string       # Number of leechers
-  date: string           # Upload date
-  category: string       # Content category
-```
-
-**Download link priority:**
-1. `magnet` - Preferred for torrents
-2. `torrent` - Direct .torrent file
-3. `download` - Generic download link
-
-### Date parsing formats
-
-Cinephage automatically parses common date formats.
-
-| Format | Example | Notes |
-|--------|---------|-------|
-| ISO 8601 | `2024-01-15T10:30:00Z` | Full timestamp |
-| Date only | `2024-01-15` | YYYY-MM-DD |
-| US format | `01/15/2024` | MM/DD/YYYY |
-| European | `15/01/2024` | DD/MM/YYYY |
-| Unix timestamp | `1705315800` | Seconds since epoch |
-| Relative | `2 hours ago` | Automatically converted |
-
-### Category mapping
-
-Map content types to indexer category IDs.
-
-```yaml
-# For Newznab/Torznab
-settings:
-  categories:
-    movies: 2000
-    tv: 5000
-
-# For torrent sites
-settings:
-  search:
-    path: /browse?cat={{category}}
-  categories:
-    movies: "movies"      # String categories
-    tv: "tv-shows"
-```
-
-**Common category IDs:**
-
-| Type | Newznab ID | Description |
-|------|------------|-------------|
-| Movies | 2000 | All movies |
-| Movies/HD | 2040 | HD movies |
-| Movies/BluRay | 2050 | BluRay releases |
-| TV | 5000 | All TV |
-| TV/HD | 5040 | HD TV episodes |
-| TV/Documentary | 5080 | Documentaries |
-
-### Handling pagination
-
-Configure multi-page search results.
-
-```yaml
-search:
-  # Page variable in URL
-  path: /search?q={{query}}&p={{page}}
-  
-  # Or offset-based
-  path: /search?q={{query}}&offset={{page}}0  # page * 10
-  
-  # Or page size parameter
-  path: /search?q={{query}}&page={{page}}&limit=50
-```
-
-**Page variable behavior:**
-- Starts at 1 for most sites
-- Incremented automatically for additional results
-- Used only when more results are needed
-
-### Error handling
-
-Cinephage handles common error scenarios automatically.
-
-| Error | Behavior | Configurable |
-|-------|----------|--------------|
-| HTTP 4xx/5xx | Automatic retry with backoff | Yes (retries) |
-| Timeout | Retry with exponential backoff | Yes (timeout) |
-| Parse error | Log and skip result | No |
-| Empty results | Continue to next indexer | No |
-| Auth failure | Mark indexer unhealthy | No |
-
-**Configuration:**
-
-```yaml
-settings:
-  timeout: 30      # Seconds before timeout
-  retries: 3       # Number of retry attempts
-  rateLimit: 60    # Max requests per minute
-```
+The full category table (including Console, Audio, PC, XXX, and Books groups) is defined in `NEWZNAB_CATEGORIES` in Cinephage's source and used to resolve category names like `Movies/Foreign` to their numeric ID.
 
 ## Complete Examples
 
-### Example 1: public torrent tracker
+### Example 1: public HTML torrent tracker
+
+Adapted from Cinephage's built-in `1337x.yaml` definition:
 
 ```yaml
+id: 1337x
 name: 1337x
+description: A public torrent site that offers verified torrent downloads
+language: en-US
+type: public
 protocol: torrent
-categories:
-  - movies
-  - tv
-priority: 25
+encoding: UTF-8
+requestdelay: 2
+
+links:
+  - https://1337x.to/
+
 settings:
-  baseUrl: https://1337x.to
-  search:
-    path: /search/{{query}}/1/
-    method: GET
+  - name: info_flaresolverr
+    type: info_flaresolverr
+
+caps:
+  categorymappings:
+    - { id: 42, cat: Movies/HD, desc: 'Movies/HD' }
+    - { id: 41, cat: TV/HD, desc: 'TV/HD' }
+  modes:
+    search: [q]
+    tv-search: [q, season, ep]
+    movie-search: [q]
+
+search:
+  paths:
+    - path: 'search/{{ .Keywords }}/1/'
+  rows:
+    selector: 'tr:has(a[href^="/torrent/"])'
+  fields:
+    title:
+      selector: td[class^="coll-1"] a[href^="/torrent/"]
+    download:
+      selector: td[class^="coll-1"] a[href^="/torrent/"]
+      attribute: href
+    seeders:
+      selector: td[class^="coll-2"]
+    leechers:
+      selector: td[class^="coll-3"]
+    size:
+      selector: td[class^="coll-4"]
+    date:
+      selector: td[class^="coll-date"]
+      optional: true
+      filters:
+        - name: fuzzytime
+
+download:
   selectors:
-    rows: table.table-list tbody tr
-    title: td.name a:nth-child(2)
-    magnet: td.coll-1 a[href^="magnet:"]
-    size: td.size
-    seeders: td.seeds
-    leechers: td.leeches
-    date: td.date
+    - selector: 'ul li a[href^="magnet:"]'
+      attribute: href
 ```
 
-### Example 2: private tracker with login
+### Example 2: Newznab usenet indexer
+
+Adapted from Cinephage's built-in `newznab.yaml` definition:
 
 ```yaml
-name: Private Tracker
-protocol: torrent
-categories:
-  - movies
-  - tv
-priority: 10
-settings:
-  baseUrl: https://tracker.example.com
-  auth:
-    type: cookie
-    cookies:
-      uid: 12345
-      pass: abcdef1234567890
-  search:
-    path: /torrents.php?search={{query}}&category={{category}}
-  selectors:
-    rows: table.torrents tr.torrent
-    title: td.name a
-    torrent: td.download a
-    size: td.size
-    seeders: td.seeders
-    leechers: td.leechers
-```
-
-### Example 3: Usenet indexer
-
-```yaml
-name: NZBGeek
+id: newznab
+name: Newznab
+description: Connect to any Newznab-compatible usenet indexer API
+type: private
+language: en-US
+encoding: UTF-8
 protocol: usenet
-categories:
-  - movies
-  - tv
-priority: 5
+requestdelay: 0.2
+
+links:
+  - http://localhost/api
+
 settings:
-  apiUrl: https://api.nzbgeek.info/
-  apiKey: YOUR_API_KEY_HERE
+  - name: apikey
+    type: password
+    label: API Key
+    required: false
+
+caps:
+  modes:
+    search: [q]
+    movie-search: [q, imdbid, tmdbid]
+    tv-search: [q, imdbid, tvdbid, season, ep]
   categories:
-    movies: 2000
-    tv: 5000
-  timeout: 30
-  retries: 3
+    '2000': Movies
+    '5000': TV
+  categorymappings:
+    - id: '2000'
+      cat: Movies
+    - id: '5000'
+      cat: TV
+      default: true
+
+search:
+  paths:
+    - path: /api
+      method: get
+      inputs:
+        t: search
+        cat: '{{ join .Categories "," }}'
+        q: '{{ .Keywords }}'
+        apikey: '{{ .Config.apikey }}'
+        limit: '100'
+  response:
+    type: xml
+  rows:
+    selector: rss channel item
+  fields:
+    title:
+      selector: title
+    download:
+      selector: link
+    date:
+      selector: pubDate
+      filters:
+        - name: dateparse
+          args: 'ddd, DD MMM YYYY HH:mm:ss ZZ'
+    size:
+      selector: enclosure
+      attribute: length
+      optional: true
 ```
 
-### Example 4: streaming provider
+### Example 3: internal streaming indexer (library)
+
+Adapted from Cinephage's built-in `cinephage-stream.yaml` definition, which queries the local database instead of a remote site:
 
 ```yaml
-name: My Streaming Service
+id: cinephage-stream
+name: Cinephage Library
+description: Stream content from your local media library
+type: private
 protocol: streaming
-categories:
-  - movies
-  - tv
-priority: 5
-settings:
-  baseUrl: https://api.streaming.example.com
-  apiKey: YOUR_API_KEY
-  timeout: 30
-  endpoints:
-    search: /v1/search
-    resolve: /v1/resolve
-```
+language: en-US
+encoding: UTF-8
+internal: true
 
-### Example 5: unit3d private tracker (oldtoons.world)
+links:
+  - https://api.cinephage.net
 
-```yaml
-name: OldToons.World
-protocol: usenet
-categories:
-  - tv
-enabled: true
-priority: 15
-description: Private UNIT3D tracker for classic animated content
-settings:
-  apiUrl: https://oldtoons.world/api
-  apiKey: YOUR_API_KEY_HERE
+protocolConfig:
+  streaming:
+    type: internal
+    dataSource: database
+
+caps:
+  modes:
+    search: [q]
+    movie-search: [q, tmdbid, imdbid]
+    tv-search: [q, tmdbid, tvdbid, imdbid, season, ep]
   categories:
-    tv: 5000
-  timeout: 30
-  retries: 3
-  rateLimit: 60
+    '2000': Movies
+    '5000': TV
+
+search:
+  response:
+    type: json
+  type: database
 ```
-
-**UNIT3D Tracker Notes:**
-
-- Uses Newznab-compatible API
-- Requires API key authentication
-- Supports `name` and `search` query parameters
-- Dynamic capability discovery from `/api?t=caps`
 
 ## Testing Indexers
-
-### Validate YAML syntax
-
-Before adding to Cinephage, validate YAML:
-
-```bash
-# Using Python
-python3 -c "import yaml; yaml.safe_load(open('indexer.yaml'))"
-
-# Or online validators
-# https://yaml-online-parser.appspot.com/
-```
-
-### Test selectors
-
-Use browser DevTools to test CSS selectors:
-
-1. Open the site in browser
-2. Press F12 for DevTools
-3. In Console tab, test:
-   ```javascript
-   document.querySelectorAll('table.results tr');
-   ```
-
-### Add to Cinephage
 
 1. Go to **Settings > Integrations > Indexers**
 2. Click **Add Indexer**
@@ -961,81 +537,52 @@ Use browser DevTools to test CSS selectors:
 
 ## Troubleshooting
 
-### YAML parse errors
+### YAML parse / schema validation errors
 
-**Problem:** "Invalid YAML" error
+**Problem:** "Invalid YAML" or a Zod validation error naming a specific field.
 
 **Solutions:**
 
 - Check indentation (spaces, not tabs)
-- Validate YAML syntax online
-- Check for special characters in strings
+- Confirm `id`, `name`, `links`, `caps`, and `search` are all present - these are required
+- Remember `settings` is a list of `{ name, type, ... }` objects, not a plain object
 - Use quotes around strings with colons
 
 ### Selector not found
 
-**Problem:** No results from working site
+**Problem:** No results from a working site.
 
 **Solutions:**
 
 - Test selectors in browser DevTools
-- Check if site uses JavaScript rendering
-- Verify selector matches actual HTML
-- Try more specific selectors
+- Check if the site uses JavaScript rendering (Cinephage's built-in captcha solver/Camoufox browser may be needed for Cloudflare-protected sites)
+- Verify the selector matches the actual HTML under `rows`/`fields`
 
 ### Authentication fails
 
-**Problem:** 401 or login errors
+**Problem:** 401 or login errors.
 
 **Solutions:**
 
-- Verify credentials/cookies
-- Check if site requires 2FA
-- Try different auth type
-- Check if IP is whitelisted
-
-### Empty results
-
-**Problem:** Test succeeds but no search results
-
-**Solutions:**
-
-- Check if search term works on site directly
-- Verify category parameters
-- Check if site requires specific search format
-- Try different query variables
+- Verify credentials/cookies referenced via `{{ .Config.* }}`
+- Check the `login.method` matches what the site actually requires
+- Check if the site requires 2FA or IP whitelisting
 
 ## Best Practices
 
 ### Naming conventions
 
-- Use descriptive IDs: `nyaa` not `indexer1`
-- Keep names concise but clear
-- Use consistent casing
-
-### Priority guidelines
-
-| Priority | Use Case                       |
-| -------- | ------------------------------ |
-| 1-10     | Primary, high-quality indexers |
-| 11-20    | Good indexers, regular use     |
-| 21-30    | Backup indexers                |
-| 31-50    | Fallback, public trackers      |
+- Use descriptive `id` values: `nyaa` not `indexer1`
+- Keep `name` concise but clear
 
 ### Categories
 
-Only enable categories the indexer supports:
-
-- Movies: Movie releases
-- TV: TV shows releases
-- Both: General indexers
+Only map categories the indexer actually supports, and give each a sensible `default: true` mapping in `categorymappings` so uncategorized results still resolve to something usable.
 
 ### Security
 
 - Never commit API keys to version control
-- Use environment variables for sensitive data
-- Rotate API keys periodically
-- Use read-only keys when available
+- Use `settings` fields (referenced via `{{ .Config.* }}`) for credentials instead of hardcoding them in the YAML
 
 ## See Also
 

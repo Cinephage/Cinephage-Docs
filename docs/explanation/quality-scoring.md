@@ -12,170 +12,152 @@ This document explains how Cinephage calculates quality scores to select the bes
 
 ## Overview
 
-Unlike simple "highest resolution wins" systems, Cinephage uses a sophisticated scoring algorithm that considers 50+ factors. This approach provides better results by accounting for:
+Unlike simple "highest resolution wins" systems, Cinephage scores releases against a library of built-in Custom Formats (well over 250 of them, covering resolution, source, codec, audio, HDR, release groups, streaming services, editions, and banned patterns), plus any formats you define yourself. Each **quality profile** decides how many points each format is worth - there is no single global formula shared by every profile. This approach provides better results than a fixed formula by accounting for:
 
 - Resolution (but not resolution alone)
-- Source quality (BluRay vs WEB-DL vs HDTV)
-- Codec efficiency (H.265 vs H.264)
-- Audio quality (Atmos vs DTS-HD vs AAC)
-- HDR formats (Dolby Vision vs HDR10)
-- Release group reputation
-- Your personal preferences (Custom Formats)
+- Source quality (Remux vs BluRay vs WEB-DL vs HDTV)
+- Codec efficiency (AV1 vs H.265 vs H.264)
+- Audio quality (Atmos vs DTS-HD MA vs AAC)
+- HDR formats (Dolby Vision vs HDR10 vs SDR)
+- Release group reputation (tiered, not just "known good/bad")
+- Editions/enhancements (IMAX, Director's Cut, Remastered, etc.)
+- Your personal preferences (custom formats you create)
 
 ## Scoring Formula
 
-The total score is calculated as:
+Cinephage parses each release name into attributes (resolution, source, codec, audio, HDR, release group, streaming service, edition, and flags like remux/repack/proper), then matches those attributes against every active custom format (built-in plus your own enabled ones). The release's total score is the sum of the points the **active quality profile** assigns to every format that matched:
 
 ```
-Total Score = Base Score + Source Bonus + Codec Bonus + Audio Bonus + HDR Bonus + Custom Format Scores
+Total Score = sum of the profile's score for each matched format
 ```
 
-Each component contributes to the final decision.
+There is no fixed "base + bonus" formula shared by every profile - the built-in **Quality**, **Balanced**, **Compact**, and **Streamer** profiles each assign different point values to the same formats, reflecting different priorities. For example, the Quality profile values Remux sources and lossless audio heavily, while Balanced and Streamer weight efficient encodes like x265/AV1 more relative to resolution.
 
-## Base Score (Resolution)
+A release that doesn't match a format in some category simply contributes 0 for that category (an unrecognized resolution or source isn't penalized by default - it's just not rewarded). Two mechanisms adjust the sum beyond straight addition:
 
-Resolution provides the foundation score:
+- **HDR is mutually exclusive** - if a release matches multiple HDR formats (some releases advertise both Dolby Vision and an HDR10+ fallback layer), only the single highest-priority match counts; HDR bonuses don't stack.
+- **Bans are absolute** - a small set of formats (deceptive retagging, CAM/telesync/telecine/screener sources, fake HDR, sample/extras files, and similar) carry an extreme negative score. Matching any of them marks the release as banned outright, and it's excluded from selection regardless of how well it scores elsewhere.
 
-| Resolution | Base Score | Notes                  |
-| ---------- | ---------- | ---------------------- |
-| 2160p (4K) | 100        | Highest base score     |
-| 1080p      | 80         | Standard HD            |
-| 720p       | 50         | Reduced detail         |
-| 480p       | 20         | Standard definition    |
-| Unknown    | 0          | No resolution detected |
+Profiles can also reject releases outright before scoring even matters: a minimum/maximum file size (per movie or per TV episode), an allowed/excluded source list, and an allowed protocol list (torrent/usenet/streaming) can all filter out a release independent of its point total.
+
+## Resolution scoring
+
+Resolution is itself a custom format category - every profile assigns it a score, but the number differs per profile. For example, the built-in **Quality** profile scores resolution as:
+
+| Resolution | Quality profile score | Notes |
+| --- | --- | --- |
+| 2160p (4K) | 300 | Highest |
+| 1080p | 200 | Standard HD |
+| 720p | 100 | Reduced detail |
+| 480p | 50 | Standard definition |
+| Unrecognized | 0 | No resolution detected |
 
 **Why Not Resolution Alone?**
 
-A 1080p BluRay (80 + 40 = 120) scores higher than a 2160p HDTV (100 + 10 = 110) because source quality matters significantly.
+Because source, audio, HDR, and other attributes are scored independently and can add up to more than the resolution gap between two releases, a lower-resolution release from a better source can outscore a higher-resolution release from a worse source under some profiles - selection isn't purely resolution-driven.
 
-## Source Quality Bonus
+## Source scoring
 
-The original source affects quality dramatically:
+The original source affects quality dramatically. Using the built-in **Quality** profile's point values as an example:
 
-| Source | Bonus | Description                             |
-| ------ | ----- | --------------------------------------- |
-| BluRay | +40   | Physical disc rip, best quality         |
-| WEB-DL | +30   | Direct streaming service rip            |
-| HDTV   | +10   | Captured from broadcast                 |
-| DVD    | +5    | Standard definition disc                |
-| CAM/TS | -1000 | Theater recording (effectively blocked) |
+| Source | Quality profile score | Description |
+| --- | --- | --- |
+| Remux | 250 | Untranscoded disc remux, highest fidelity |
+| BluRay | 200 | Physical disc rip/encode |
+| WEB-DL | 180 | Direct streaming service rip |
+| WEBRip | 150 | Captured/re-encoded stream |
+| HDTV | 100 | Captured from broadcast |
+| DVD | 50 | Standard definition disc |
+| CAM / Telesync / Telecine / Screener | Banned | Theater/pre-release recordings |
 
-**Why Source Matters:**
-
-- **BluRay** - Highest bitrate, no compression artifacts
-- **WEB-DL** - Good quality from streaming services
-- **HDTV** - Variable quality, may have logos/commercials
-- **CAM/TS** - Poor quality, handheld camera recordings
+CAM, telesync, telecine, and screener releases aren't just penalized with a large negative score - they're matched by a dedicated banned custom format, and most profiles also exclude those sources outright via an allowed/excluded source list. Either mechanism removes them from consideration rather than merely scoring them very low.
 
 ### Source detection
 
 Cinephage detects sources from release names:
 
 ```
-Movie.2023.1080p.BluRay.x264-SPARKS    → BluRay (+40)
-Movie.2023.1080p.WEB-DL.DDP5.1-NTb     → WEB-DL (+30)
-Movie.2023.1080p.HDTV.x264-LOL         → HDTV (+10)
-Movie.2023.HDTS.x264-EVO               → TS (-1000)
+Movie.2023.1080p.BluRay.REMUX-FraMeSToR  → Remux
+Movie.2023.1080p.BluRay.x264-SPARKS      → BluRay
+Movie.2023.1080p.WEB-DL.DDP5.1-NTb       → WEB-DL
+Movie.2023.1080p.HDTV.x264-LOL           → HDTV
+Movie.2023.HDTS.x264-EVO                 → Telesync (banned)
 ```
 
-## Codec Efficiency Bonus
+## Codec scoring
 
-Modern codecs provide better quality at smaller sizes:
+Modern codecs provide better quality at smaller sizes. Example scores from the built-in **Quality** profile:
 
-| Codec      | Bonus | Notes                              |
-| ---------- | ----- | ---------------------------------- |
-| AV1        | +25   | Latest codec, best efficiency      |
-| H.265/HEVC | +20   | Good compression, widely supported |
-| H.264/x264 | +0    | Baseline, no bonus                 |
-| MPEG-2     | -10   | Outdated, inefficient              |
-| DivX/XviD  | -15   | Legacy codecs                      |
+| Codec | Quality profile score | Notes |
+| --- | --- | --- |
+| AV1 | 50 | Latest codec, best efficiency |
+| H.265/HEVC | 30 | Good compression, widely supported |
+| H.264/x264 | 10 | Baseline |
 
-**Codec Efficiency:**
-
-- **AV1** - 50% smaller than H.264 at same quality
-- **H.265** - 40% smaller than H.264
-- **H.264** - Baseline efficiency
-- **Older codecs** - Larger files, lower quality
+Profiles that favor efficient encodes (like Balanced or Streamer) typically weight x265/AV1 more heavily relative to resolution than the Quality profile does. Built-in profiles also penalize wasteful combinations, such as an x264 encode at 2160p, since an older codec at that resolution uses far more space without a quality benefit over an efficient encode.
 
 ### Codec detection
 
 ```
-Movie.2023.1080p.BluRay.AV1-GRP        → AV1 (+25)
-Movie.2023.1080p.BluRay.x265-SPARKS    → H.265 (+20)
-Movie.2023.1080p.BluRay.x264-EVO       → H.264 (+0)
-Movie.2023.DVDRip.DivX-OLD             → DivX (-15)
+Movie.2023.1080p.BluRay.AV1-GRP        → AV1
+Movie.2023.1080p.BluRay.x265-SPARKS    → H.265
+Movie.2023.1080p.BluRay.x264-EVO       → H.264
 ```
 
-## Audio Quality Bonus
+## Audio scoring
 
-Audio quality significantly impacts the viewing experience:
+Audio quality significantly impacts the viewing experience. Example scores from the built-in **Quality** profile, which values lossless audio highly:
 
-| Audio Format | Bonus | Channels | Description           |
-| ------------ | ----- | -------- | --------------------- |
-| Dolby Atmos  | +25   | 7.1+     | Object-based 3D audio |
-| DTS:X        | +25   | 7.1+     | Object-based audio    |
-| DTS-HD MA    | +20   | 5.1/7.1  | Lossless surround     |
-| TrueHD       | +15   | 5.1/7.1  | Dolby lossless        |
-| DD+ (E-AC3)  | +10   | 5.1      | Dolby Digital Plus    |
-| DTS          | +8    | 5.1      | Standard DTS          |
-| AC3          | +5    | 5.1      | Dolby Digital         |
-| AAC          | +3    | 2.0/5.1  | Efficient codec       |
-| MP3          | +0    | 2.0      | Basic audio           |
-
-**Audio Considerations:**
-
-- **Lossless** (DTS-HD MA, TrueHD) - Perfect quality, large files
-- **High-quality lossy** (DD+, DTS) - Excellent quality, smaller
-- **Standard** (AC3, AAC) - Good quality, efficient
-- **Stereo** (AAC) - Sufficient for dialogue
+| Audio Format | Quality profile score | Description |
+| --- | --- | --- |
+| TrueHD / DTS:X | 150 | Lossless / object-based |
+| DTS-HD MA / PCM | 140 | Lossless surround |
+| FLAC | 130 | Lossless |
+| Dolby Atmos | 120 | Object-based (carried on TrueHD or DD+) |
+| DD+ (E-AC3) | 100 | Dolby Digital Plus |
+| DTS-HD HRA | 100 | High-quality lossy |
+| Opus | 80 | Efficient lossy |
+| DTS | 70 | Standard DTS |
+| Dolby Digital (AC3) | 60 | Standard |
+| AAC | 40 | Efficient lossy |
+| MP3 | 20 | Basic audio |
 
 ### Audio detection
 
 ```
-Movie.2023.2160p.BluRay.Atmos.TrueHD7.1 → Atmos (+25)
-Movie.2023.1080p.BluRay.DTS-HD.MA.5.1   → DTS-HD MA (+20)
-Movie.2023.1080p.BluRay.DD5.1-SPARKS    → AC3 (+5)
-Movie.2023.1080p.WEB-DL.AAC2.0-NTb      → AAC (+3)
+Movie.2023.2160p.BluRay.Atmos.TrueHD7.1 → TrueHD (Atmos also detected as a flag)
+Movie.2023.1080p.BluRay.DTS-HD.MA.5.1   → DTS-HD MA
+Movie.2023.1080p.BluRay.DD5.1-SPARKS    → Dolby Digital
+Movie.2023.1080p.WEB-DL.AAC2.0-NTb      → AAC
 ```
 
-## HDR Format Bonus
+## HDR scoring
 
-High Dynamic Range provides better color and contrast:
+High Dynamic Range provides better color and contrast. Example scores from the built-in **Quality** profile:
 
-| HDR Format   | Bonus | Description                       |
-| ------------ | ----- | --------------------------------- |
-| Dolby Vision | +30   | Best HDR, dynamic metadata        |
-| HDR10+       | +20   | Dynamic metadata, open standard   |
-| HDR10        | +15   | Static metadata, widely supported |
-| HLG          | +10   | Broadcast HDR                     |
-| SDR          | +0    | Standard dynamic range            |
+| HDR Format | Quality profile score | Description |
+| --- | --- | --- |
+| Dolby Vision | 100 | Best HDR, dynamic metadata |
+| HDR10+ | 90 | Dynamic metadata, open standard |
+| HDR10 | 80 | Static metadata, widely supported |
+| Generic HDR | 60 | HDR flag detected without a specific format |
+| HLG | 50 | Broadcast HDR |
+| PQ | 40 | PQ transfer function tag |
+| SDR | 0 | Standard dynamic range |
 
-**HDR Considerations:**
-
-- **Dolby Vision** - Best quality, requires compatible display
-- **HDR10+** - Similar to Dolby Vision, Samsung-focused
-- **HDR10** - Good HDR, static metadata
-- **SDR** - No HDR, compatible with all displays
+**HDR is mutually exclusive:** when a release name matches more than one HDR format (for example, a release tagged with both Dolby Vision and an HDR10+ fallback layer), only the single highest-priority match is scored - the points don't stack.
 
 ### HDR detection
 
 ```
-Movie.2023.2160p.BluRay.DV.HDR10+.x265  → Dolby Vision + HDR10+ (+50)
-Movie.2023.2160p.BluRay.HDR10.x265      → HDR10 (+15)
-Movie.2023.1080p.BluRay.x264            → SDR (+0)
+Movie.2023.2160p.BluRay.DV.HDR10+.x265  → Dolby Vision only (HDR10+ suppressed by mutual exclusivity)
+Movie.2023.2160p.BluRay.HDR10.x265      → HDR10
+Movie.2023.1080p.BluRay.x264            → SDR
 ```
 
-## Release Group Bonus
+## Release group scoring
 
-Some release groups are known for quality:
-
-| Group Type | Bonus | Examples              |
-| ---------- | ----- | --------------------- |
-| Tier 1     | +15   | SPARKS, DON, HDX, NTb |
-| Tier 2     | +10   | EVO, RARBG, YIFY      |
-| Tier 3     | +5    | Various scene groups  |
-| Unknown    | +0    | No reputation data    |
-| Avoided    | -20   | Known poor quality    |
+Release groups are scored as a "release group tier" category with well over a hundred built-in group formats, loosely organized by reputation - premier remux groups, top encode groups, quality 4K/WEB-DL groups, efficient/micro encoders, and known low-quality groups. Each built-in profile assigns its own points per group according to that profile's priorities. The Quality profile, for instance, scores premier remux groups highest and penalizes micro-encoder groups that shrink files at the cost of quality, while a size-conscious profile might score some of those same micro-encoder groups positively instead.
 
 **Why Groups Matter:**
 
@@ -185,187 +167,109 @@ Some release groups are known for quality:
 - No fake or mislabeled releases
 
 :::note
-Group scoring is subjective and configurable via Custom Formats.
+The built-in group tiers are a starting point, not a fixed ranking - you can add your own release-group custom formats, and any group not covered by a built-in format simply contributes 0.
 :::
 
 ## Custom Format Scoring
 
-Custom formats allow you to define personal preferences:
+Custom formats let you define your own preferences beyond the built-in ones. Each custom format is a set of conditions - matching on resolution, source, codec, audio codec/channels, an Atmos flag, HDR format, streaming service, release title/group text (regex), a flag (remux/repack/proper/3D), or originating indexer - combined with required (AND) and optional (OR) logic, and an optional negate toggle per condition. Formats are created and managed through **Settings > Library > Quality Settings (Custom Formats tab)** in the UI; they aren't written as YAML (that syntax is specific to indexer definitions, a separate part of the system - see [Search System](search-system)).
 
-### Creating scoring rules
+Each custom format you enable is scored per-profile just like the built-in ones: you assign it a point value (positive or negative) inside each quality profile where you want it to apply.
 
-Each custom format has a score that adds to or subtracts from the total:
+**Examples of what a custom format can express:**
 
-```yaml
-# Boost HEVC releases
-Name: 'x265 Boost'
-Score: +20
-Conditions:
-  - Contains: 'x265'
-  - OR Contains: 'HEVC'
-```
+- Boost releases whose title matches `x265` or `HEVC`
+- Heavily penalize (or ban) releases matching `3D` or `HSBS` in the title
+- Score based on source alone, ignoring resolution (a format with only a source condition)
+- Score based on resolution alone, ignoring source (a format with only a resolution condition)
+- Boost specific trusted release groups by name
+- Reject releases below a certain file size for a given resolution
 
-```yaml
-# Block certain content
-Name: 'Block 3D'
-Score: -1000
-Conditions:
-  - Contains: '3D'
-  - OR Contains: 'HSBS'
-```
+### Required formats
 
-### Source-Only scoring (v0.5.0+)
+A profile can also require that a release match certain custom formats before it's eligible at all - for example, requiring at least one format from a set (OR) or requiring several specific formats simultaneously (AND) - independent of the point total.
 
-Score releases based solely on source quality, ignoring resolution:
+### Pack preference (TV)
 
-```yaml
-Name: 'Source Priority'
-Score: +50
-Conditions:
-  - Source: 'BluRay'
-```
-
-This is useful when you want the best source regardless of resolution.
-
-### Resolution-Only scoring (v0.5.0+)
-
-Score releases based solely on resolution, ignoring source:
-
-```yaml
-Name: '4K Priority'
-Score: +100
-Conditions:
-  - Resolution: '2160p'
-```
-
-This prioritizes resolution over source quality.
-
-### Built-in profile overrides (v0.5.0+)
-
-Override built-in Quality Profiles at runtime:
-
-| Profile | Override Behavior |
-|---------|-------------------|
-| **Quality** | Custom format scores take precedence |
-| **Balanced** | Built-in scores + custom additions |
-| **Compact** | Override with user-defined thresholds |
-
-### Custom format examples
-
-**Prefer Specific Resolution:**
-
-```yaml
-Name: '1080p Preferred'
-Score: +10
-Conditions:
-  - Contains: '1080p'
-  - Does NOT contain: '2160p'
-```
-
-**Require Minimum Size:**
-
-```yaml
-Name: 'Minimum Quality'
-Score: -1000
-Conditions:
-  - Size less than: 1GB
-  - Contains: '1080p'
-```
-
-**Prefer Release Groups:**
-
-```yaml
-Name: 'Trusted Groups'
-Score: +15
-Conditions:
-  - Contains: '-SPARKS'
-  - OR Contains: '-DON'
-  - OR Contains: '-NTb'
-```
+For TV, Cinephage can favor season/series packs over individual episodes when searching for multiple missing episodes at once. This is a separate scoring input from custom formats: complete-series packs get the largest bonus, multi-season packs (2+ seasons) get a smaller bonus, and single-season packs get a smaller bonus still - configurable per profile, with a minimum percentage of "wanted" episodes a pack must cover to qualify.
 
 ## Complete Scoring Examples
 
-### Example 1: high-quality movie
+These examples use the built-in **Quality** profile's point values to illustrate how matched formats add up. A different profile would produce different totals for the same release, since each profile assigns its own scores.
 
-**Release:** `Inception.2010.2160p.UHD.BluRay.DV.HDR10+.Atmos.TrueHD7.1.x265-SPARKS`
+### Example 1: high-quality remux
 
-**Score Breakdown:**
+**Release:** `Inception.2010.2160p.UHD.BluRay.REMUX.DV.HDR10+.TrueHD.7.1.Atmos-FraMeSToR`
+
+**Score Breakdown (Quality profile):**
 
 ```
-Base (2160p):          100
-Source (BluRay):       +40
-Codec (x265):          +20
-Audio (Atmos):         +25
-HDR (DV + HDR10+):     +45
-Group (SPARKS):        +15
-─────────────────────────
-Total:                 245
+Resolution (2160p):     300
+Source (Remux):        +250
+Codec (n/a, remux):       0
+Audio (TrueHD/Atmos):   +150
+HDR (Dolby Vision):     +100  (HDR10+ suppressed by mutual exclusivity)
+Group (premier remux):  +100
+─────────────────────────────
+Total:                  ~900
 ```
 
 **Result:** Excellent quality, will be selected if available.
 
-### Example 2: balanced quality
+### Example 2: balanced quality encode
 
 **Release:** `Movie.2023.1080p.BluRay.DTS-HD.MA.5.1.x264-EVO`
 
-**Score Breakdown:**
+**Score Breakdown (Quality profile):**
 
 ```
-Base (1080p):          80
-Source (BluRay):       +40
-Codec (x264):          +0
-Audio (DTS-HD MA):     +20
-HDR (None):            +0
-Group (EVO):           +10
-─────────────────────────
-Total:                 150
+Resolution (1080p):     200
+Source (BluRay):       +200
+Codec (x264):            +10
+Audio (DTS-HD MA):      +140
+HDR (none):                0
+Group (EVO, low tier):   -50
+─────────────────────────────
+Total:                  ~500
 ```
 
-**Result:** Good quality, balanced file size.
+**Result:** Good quality; the exact total and ranking against other candidates depends on the profile and other matched formats (editions, streaming service, etc.) not shown here.
 
-### Example 3: low quality (blocked)
+### Example 3: low quality (banned)
 
 **Release:** `Movie.2023.HDTS.x264-Unknown`
 
 **Score Breakdown:**
 
 ```
-Base (Unknown):        0
-Source (TS):           -1000
-Codec (x264):          +0
-Audio (Unknown):       +0
-HDR (None):            +0
-Group (Unknown):       +0
-─────────────────────────
-Total:                 -1000
+Source (Telesync):  BANNED
 ```
 
-**Result:** Blocked by negative score, will not be selected.
+**Result:** Matches a banned format - excluded from selection entirely regardless of any other points, and not just heavily penalized.
 
 ### Example 4: custom format impact
 
 **Release:** `Movie.2023.1080p.WEB-DL.x265.DD5.1-NTb`
 
-**Base Score:**
+**Base Score (Quality profile, built-in formats only):**
 
 ```
-Base (1080p):          80
-Source (WEB-DL):       +30
-Codec (x265):          +20
-Audio (DD):            +5
-─────────────────────────
-Subtotal:              135
+Resolution (1080p):     200
+Source (WEB-DL):        +180
+Codec (x265):            +30
+Audio (Dolby Digital):   +60
+Group (NTb):             +40
+─────────────────────────────
+Subtotal:                ~510
 ```
 
-**With Custom Formats:**
+**With a custom format added** (e.g. a "Trusted Uploader" format worth +25 in this profile that also matches `NTb`):
 
 ```
-Subtotal:              135
-"x265 Boost":          +20
-"WEB-DL Preferred":    +10
-"NTb Bonus":           +5
-─────────────────────────
-Total:                 170
+Subtotal:                ~510
+Custom ("Trusted Uploader"): +25
+─────────────────────────────
+Total:                    ~535
 ```
 
 ## Scoring in Practice
@@ -373,43 +277,33 @@ Total:                 170
 ### Search process
 
 1. **Query Indexers** - Search all enabled indexers
-2. **Parse Results** - Extract metadata from release names
-3. **Calculate Scores** - Apply scoring algorithm
-4. **Filter Results** - Remove blocklisted/low-quality
-5. **Select Best** - Choose highest scoring release
+2. **Parse Results** - Extract attributes from release names
+3. **Calculate Scores** - Match against active custom formats and sum the active profile's points
+4. **Filter Results** - Remove banned, size-rejected, protocol-rejected, or blocklisted releases
+5. **Select Best** - Choose the highest-scoring acceptable release
 6. **Send to Download** - Add to download queue
 
 ### Upgrade decision
 
 When considering upgrades:
 
-1. **Compare Scores** - New vs existing
-2. **Check Cutoff** - Has cutoff been reached?
+1. **Compare Scores** - New vs existing, under the item's assigned profile
+2. **Check Cutoff** - Has the profile's upgrade cutoff been reached?
 3. **Verify Monitoring** - Is item monitored?
-4. **Apply Delays** - Wait for better releases?
+4. **Apply Delays** - Wait for better releases (if a delay profile applies)?
 5. **Queue Upgrade** - Download better version
+
+If a profile has "prevent resolution downgrades" enabled, a candidate at a lower resolution than the existing file is never treated as an upgrade, even if it scores higher overall.
 
 ## Profile-Specific Scoring
 
-### Quality profile cutoffs
+### Quality profiles
 
-Each profile defines when to stop upgrading:
-
-| Profile  | Target | Cutoff       | Example                    |
-| -------- | ------ | ------------ | -------------------------- |
-| Quality  | 4K HDR | 2160p BluRay | Upgrade until 4K BluRay    |
-| Balanced | 1080p  | 1080p BluRay | Upgrade until 1080p BluRay |
-| Compact  | 720p   | 720p WEB-DL  | Upgrade until 720p WEB-DL  |
+Cinephage ships with four built-in profiles - **Quality**, **Balanced**, **Compact**, and **Streamer** - each assigning its own point values to the same underlying formats, plus its own minimum score, upgrade cutoff score, and (optionally) file size and protocol restrictions. You can also create custom profiles with your own format scores. See [Set Up Quality Profiles](/guides/configure/quality/quality-profiles) for how to configure them.
 
 ### Score thresholds
 
-Profiles can define minimum scores:
-
-```
-Minimum Score: 100
-- Scores below 100 are rejected
-- Ensures minimum quality standard
-```
+Each profile defines a minimum score a release must reach to be accepted at all, and an upgrade-cutoff score at which Cinephage stops looking for further upgrades. Both are configured per profile, not fixed system-wide values.
 
 ## Troubleshooting Scoring
 
@@ -417,11 +311,12 @@ Minimum Score: 100
 
 **Possible Reasons:**
 
-1. Higher quality failed custom format rules
+1. Higher quality failed custom format rules or a required-format check
 2. Higher quality is blocklisted
 3. Higher quality indexer is down
 4. Delay profile waiting for better releases
 5. Cutoff already reached
+6. Higher quality was rejected on file size or protocol restrictions
 
 **Debugging:**
 
@@ -434,19 +329,19 @@ Minimum Score: 100
 
 **Check:**
 
-1. Format is assigned to profile
-2. Condition syntax is correct
-3. Release name matches pattern
-4. Format is enabled
+1. Format is enabled and assigned a score in the profile
+2. Condition logic (required/optional, negate) is correct
+3. Release name/attributes actually match the conditions
+4. Format is enabled globally
 
 ### Unexpected scores
 
 **Verify:**
 
 - Quality profile assigned correctly
-- Custom format scores are correct
-- No conflicting rules
-- Release name parsing correctly
+- Custom format scores are correct for that profile
+- No conflicting or overlapping conditions
+- Release attributes were parsed as expected (HDR mutual exclusivity, banned formats, etc. can all change the total)
 
 ## Best Practices
 
@@ -470,12 +365,12 @@ Minimum Score: 100
 
 ### Balance quality and size
 
-- Higher score ≠ always better
+- Higher score does not always mean better for your needs
 - Consider storage constraints
 - Set realistic cutoffs
 
 ## See Also
 
-- [Set Up Quality Profiles](/guides/configure/quality-profiles) - Configure quality settings
+- [Set Up Quality Profiles](/guides/configure/quality/quality-profiles) - Configure quality settings
 - [Key Concepts](concepts) - Core terminology
 - [Architecture Overview](architecture) - System design

@@ -106,4 +106,4 @@ If you encounter issues during installation:
 
 - Check the [Troubleshooting Guide](/guides/deploy/troubleshooting)
 - Review the [Installation FAQ](/support/faq/installation)
-- Join our [GitHub Discussions](https://github.com/MoldyTaint/Cinephage/discussions)
+- Join our [GitHub Discussions](https://github.com/cinephage/cinephage/discussions)

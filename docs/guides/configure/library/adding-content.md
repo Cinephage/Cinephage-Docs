@@ -1,7 +1,7 @@
 ---
 title: Adding Content
 description: Add movies and TV shows to your library manually or in bulk
-sidebar_position: 6
+sidebar_position: 2
 tags: [library, adding, movies, tv, bulk, guide]
 keywords: [library, adding content, movies, tv, bulk import]
 ---
@@ -16,67 +16,56 @@ The Discover page surfaces trending, popular, and upcoming content from TMDB. Th
 
 ## Manual Addition
 
+Adding movies and TV shows happens through **Discover** - there isn't a separate "Add New" menu item under Library.
+
 ### Adding movies
 
-1. Go to **Discover** or **Movies > Add New**
-2. Search for movie title
-3. Click movie in results
-4. Configure:
+1. Go to **Discover**
+2. Search for the movie title
+3. Click the movie in results
+4. In the Add to Library modal, configure:
    - Root folder
    - Quality profile
-   - Monitor status
+   - Monitor status (Monitored / Unmonitored)
 5. Click **Add**
 
 ### Adding TV shows
 
-1. Go to **Discover** or **TV Shows > Add New**
-2. Search for series title
-3. Click series in results
-4. Configure:
+1. Go to **Discover**
+2. Search for the series title
+3. Click the series in results
+4. In the Add to Library modal, configure:
    - Root folder
    - Quality profile
-   - Monitor: All, Future, Missing, Existing
+   - Monitor: All Episodes, Future Episodes, Missing Episodes, Existing Episodes, First Season, Last Season, Recent, Pilot, or None
 5. Click **Add**
 
 ## Bulk Addition
 
-### From TMDB lists
+### Import existing files
 
-1. Go to **Discover > Lists**
-2. Browse TMDB curated lists
-3. Click **Add List**
-4. Select items to add
-5. Configure defaults
-6. Bulk add
+Cinephage's import wizard matches files already on disk against TMDB - it isn't a CSV importer:
 
-### Import from file
-
-1. Prepare CSV with columns: Title, Year, Type
-2. Go to **Library > Import**
-3. Upload CSV
-4. Map columns
-5. Import
+1. Go to **Library > Import**
+2. Select a folder to scan (path selector)
+3. Review the detected movies/series groups and confirm or correct matches
+4. Import the matched items into your library
 
 ### Add TMDB collections (bulk)
 
 Add entire TMDB collections to your library at once:
 
-1. Go to a movie detail page that belongs to a collection (e.g., "The Avengers")
-2. Look for **"Part of [Collection Name]"** section
-3. Click **"Add Collection"**
-4. Configure:
-   - Root folder for collection
-   - Quality profile
-   - Language profile
-   - Monitor status
-5. Click **Add All**
+1. Go to **Discover** and search for a movie that belongs to a collection (e.g., "The Avengers")
+2. Click it to open the Add to Library modal
+3. If the collection has other entries missing from your library, the modal offers an option to add the whole collection
+4. Configure root folder, quality profile, and monitor status
+5. Click **Add**
 
 **What happens:**
 
-- All movies in the collection are added to your library
+- All missing movies in the collection are added to your library along with the one you searched for
 - Each movie is monitored according to your settings
 - Existing movies in your library are not duplicated
-- You can add missing movies to complete collections
 
 ## Managing Library Items
 
@@ -151,6 +140,6 @@ Understanding monitoring levels:
 
 ## See Also
 
-- [Search and Download](../use/search-and-download) - Find and download content
-- [Import Existing Files](../use/import-existing-files) - Import your existing media
+- [Search and Download](../../use/search-and-download) - Find and download content
+- [Import Existing Files](../../use/import-existing-files) - Import your existing media
 - [Collections and Tags](collections-and-tags) - Organize your content

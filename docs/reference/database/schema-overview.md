@@ -53,6 +53,8 @@ Core media library data:
 | `episodes`             | Episode metadata                     |
 | `episode_files`        | Physical episode files               |
 | `root_folders`         | Configured Root Folders              |
+| `libraries`            | First-class library entities (system + custom) |
+| `library_root_folders` | Root folders assigned to each library |
 | `unmatched_files`      | Files awaiting manual matching       |
 | `library_scan_history` | Scan operation history               |
 
@@ -74,9 +76,10 @@ Content source management:
 
 | Table                 | Purpose                        |
 | --------------------- | ------------------------------ |
-| `indexer_definitions` | YAML indexer definitions cache |
 | `indexers`            | Configured indexer instances   |
 | `indexer_status`      | Health status tracking         |
+
+Indexer YAML definitions themselves are not stored in a database table - they are loaded from `.yaml` files on disk (see [Environment Variables](../configuration/environment-variables) for `INDEXER_DEFINITIONS_PATH`/`INDEXER_CUSTOM_DEFINITIONS_PATH`).
 
 ### Quality
 
@@ -174,7 +177,7 @@ Application settings and metadata:
 ```
 movies
 ├── movie_files (one-to-many)
-├── subtitles (many-to-many)
+├── subtitles (one-to-many)
 └── root_folders (many-to-one)
 ```
 
@@ -185,7 +188,7 @@ series
 ├── seasons (one-to-many)
 │   └── episodes (one-to-many)
 │       ├── episode_files (one-to-many)
-│       └── subtitles (many-to-many)
+│       └── subtitles (one-to-many)
 └── root_folders (many-to-one)
 ```
 
@@ -200,10 +203,12 @@ movies/episodes
 
 ## Common Queries
 
+Cinephage's schema is defined with Drizzle ORM, which maps camelCase JS property names to snake_case SQLite column names (e.g. the `tmdbId` field is stored in a `tmdb_id` column). The examples below use the actual on-disk snake_case column names, as required for raw `sqlite3` queries.
+
 ### List all movies
 
 ```sql
-SELECT id, title, year, monitored, tmdbId
+SELECT id, title, year, monitored, tmdb_id
 FROM movies
 ORDER BY title;
 ```
@@ -223,9 +228,9 @@ SELECT
   dh.id,
   dh.title,
   dh.quality,
-  dh.date
+  dh.created_at
 FROM download_history dh
-ORDER BY dh.date DESC
+ORDER BY dh.created_at DESC
 LIMIT 10;
 ```
 
@@ -236,7 +241,7 @@ SELECT
   m.title,
   m.year
 FROM movies m
-LEFT JOIN movie_files mf ON m.id = mf.movieId
+LEFT JOIN movie_files mf ON m.id = mf.movie_id
 WHERE m.monitored = 1
   AND (mf.id IS NULL OR mf.quality IS NULL);
 ```

@@ -72,10 +72,15 @@ You should see the qBittorrent web interface. Log in with the credentials you se
 
 ### Options
 
-| Field | Description | Example |
+Cinephage separates categories by content type rather than using a single category field:
+
+| Field | Description | Default |
 |-------|-------------|---------|
-| **Category** | Organizes downloads | `cinephage` |
-| **Priority** | Download priority | Leave as default |
+| **Movies category** | qBittorrent category applied to movie downloads | `movies` |
+| **TV Shows category** | qBittorrent category applied to TV downloads | `tv` |
+| **Recent priority / Older priority** | Download priority (Default, High, Force) for recently-aired vs. older content | Default |
+| **Start as** | Initial state for added torrents (Start, Pause, Force) | Start |
+| **Sequential download** | Download pieces in order (qBittorrent-only option) | Off |
 
 ## Step 4: Test the Connection
 
@@ -132,7 +137,7 @@ Click **Save** to add the download client.
 
 - Check path mappings if Cinephage and qBittorrent use different paths
 - Verify Cinephage can access the download folder
-- Check Cinephage logs in **Settings > Logs**
+- Check Cinephage logs in **Settings > Monitoring > Logs**
 - Ensure completed download handling is enabled
 
 ### Category not working

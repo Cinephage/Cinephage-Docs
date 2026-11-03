@@ -73,9 +73,10 @@ If you need to set or change credentials:
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| **Category** | Organizes downloads | `movies` or `tv` |
+| **Movies category** | NZBGet category applied to movie downloads | `movies` |
+| **TV Shows category** | NZBGet category applied to TV downloads | `tv` |
 
-Categories in NZBGet help separate downloads by type and can trigger different post-processing.
+Categories in NZBGet help separate downloads by type and can trigger different post-processing. Cinephage sends separate category names for movies and TV rather than a single shared category.
 
 ### URL base (reverse proxy support)
 
@@ -146,7 +147,7 @@ If the test fails:
 
 - Check path mappings if Cinephage and NZBGet use different paths
 - Verify Cinephage can access the completed download folder
-- Check Cinephage logs in **Settings > Logs**
+- Check Cinephage logs in **Settings > Monitoring > Logs**
 - Ensure the download category is correct
 
 ### RSS feed issues

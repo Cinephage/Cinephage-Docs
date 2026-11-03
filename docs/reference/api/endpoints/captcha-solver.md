@@ -16,12 +16,12 @@ All captcha-solver endpoints require admin authentication.
 
 | Endpoint | Auth Level |
 |----------|------------|
-| GET `/api/captcha-solver` | requireAuth |
-| PUT `/api/captcha-solver` | requireAuth |
-| DELETE `/api/captcha-solver` | requireAuth |
-| GET `/api/captcha-solver/health` | requireAuth |
-| DELETE `/api/captcha-solver/health` | requireAuth |
-| POST `/api/captcha-solver/test` | requireAuth |
+| GET `/api/captcha-solver` | 👑 requireAdmin |
+| PUT `/api/captcha-solver` | 👑 requireAdmin |
+| DELETE `/api/captcha-solver` | 👑 requireAdmin |
+| GET `/api/captcha-solver/health` | 👑 requireAdmin |
+| DELETE `/api/captcha-solver/health` | 👑 requireAdmin |
+| POST `/api/captcha-solver/test` | 👑 requireAdmin |
 
 ---
 
@@ -39,30 +39,26 @@ GET /api/captcha-solver
 |------|-------------|
 | 200 | Success |
 | 401 | Authentication required |
+| 500 | Failed to get settings |
 
 ### Response schema
 
 ```json
 {
-  "enabled": "boolean",
-  "timeout": "integer",
-  "cacheTtl": "integer",
-  "headless": "boolean",
-  "proxy": "string | null",
-  "maxRetries": "integer",
-  "parallelSolves": "integer",
-  "browserPath": "string | null",
-  "stats": {
-    "totalSolves": "integer",
-    "successfulSolves": "integer",
-    "failedSolves": "integer",
-    "successRate": "number",
-    "averageSolveTime": "number",
-    "cachedDomains": "integer",
-    "lastError": "string | null"
+  "success": "boolean",
+  "settings": {
+    "enabled": "boolean",
+    "timeoutSeconds": "integer",
+    "cacheTtlSeconds": "integer",
+    "headless": "boolean",
+    "proxyUrl": "string",
+    "proxyUsername": "string",
+    "proxyPassword": "string"
   }
 }
 ```
+
+`proxyPassword` is masked as `********` when a password is set, and omitted (empty string) otherwise.
 
 ### Example request
 
@@ -75,22 +71,15 @@ curl -H "x-api-key: cinephage_your_key_here" \
 
 ```json
 {
-  "enabled": true,
-  "timeout": 60,
-  "cacheTtl": 24,
-  "headless": true,
-  "proxy": null,
-  "maxRetries": 3,
-  "parallelSolves": 1,
-  "browserPath": null,
-  "stats": {
-    "totalSolves": 150,
-    "successfulSolves": 142,
-    "failedSolves": 8,
-    "successRate": 94.67,
-    "averageSolveTime": 12.5,
-    "cachedDomains": 12,
-    "lastError": null
+  "success": true,
+  "settings": {
+    "enabled": true,
+    "timeoutSeconds": 60,
+    "cacheTtlSeconds": 3600,
+    "headless": true,
+    "proxyUrl": "",
+    "proxyUsername": "",
+    "proxyPassword": ""
   }
 }
 ```
@@ -110,12 +99,12 @@ PUT /api/captcha-solver
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | enabled | boolean | No | Enable/disable solver |
-| timeout | integer | No | Max time to wait for solve (seconds) |
-| cacheTtl | integer | No | Cookie cache TTL (hours) |
+| timeoutSeconds | number | No | Max time to wait for solve, 10-300 seconds |
+| cacheTtlSeconds | number | No | Cookie cache TTL, 60-86400 seconds |
 | headless | boolean | No | Run browser without GUI |
-| proxy | string | No | HTTP proxy for browser |
-| maxRetries | integer | No | Retry attempts per challenge |
-| parallelSolves | integer | No | Concurrent challenge solving |
+| proxyUrl | string | No | Proxy URL for the browser |
+| proxyUsername | string | No | Proxy username |
+| proxyPassword | string | No | Proxy password |
 
 ### Response codes
 
@@ -124,6 +113,7 @@ PUT /api/captcha-solver
 | 200 | Settings updated |
 | 400 | Invalid request body |
 | 401 | Authentication required |
+| 500 | Failed to update settings |
 
 ### Example request
 
@@ -133,8 +123,8 @@ curl -X PUT \
   -H "x-api-key: cinephage_your_key_here" \
   -d '{
     "enabled": true,
-    "timeout": 90,
-    "cacheTtl": 48,
+    "timeoutSeconds": 90,
+    "cacheTtlSeconds": 7200,
     "headless": true
   }' \
   "http://localhost:3000/api/captcha-solver"
@@ -145,13 +135,16 @@ curl -X PUT \
 ```json
 {
   "success": true,
-  "enabled": true,
-  "timeout": 90,
-  "cacheTtl": 48,
-  "headless": true,
-  "proxy": null,
-  "maxRetries": 3,
-  "parallelSolves": 1
+  "message": "Captcha solver settings updated",
+  "settings": {
+    "enabled": true,
+    "timeoutSeconds": 90,
+    "cacheTtlSeconds": 7200,
+    "headless": true,
+    "proxyUrl": "",
+    "proxyUsername": "",
+    "proxyPassword": ""
+  }
 }
 ```
 
@@ -159,7 +152,7 @@ curl -X PUT \
 
 ## Reset solver
 
-Resets Captcha Solver to defaults.
+Resets Captcha Solver settings to defaults.
 
 ```
 DELETE /api/captcha-solver
@@ -171,6 +164,7 @@ DELETE /api/captcha-solver
 |------|-------------|
 | 200 | Solver reset |
 | 401 | Authentication required |
+| 500 | Failed to reset settings |
 
 ### Example request
 
@@ -184,7 +178,7 @@ curl -X DELETE \
 
 ## Get solver health
 
-Returns health statistics and cached cookies.
+Returns health status and solver statistics.
 
 ```
 GET /api/captcha-solver/health
@@ -194,25 +188,27 @@ GET /api/captcha-solver/health
 
 ```json
 {
-  "healthy": "boolean",
-  "stats": {
-    "totalSolves": "integer",
-    "successfulSolves": "integer",
-    "failedSolves": "integer",
-    "successRate": "number",
-    "averageSolveTime": "number"
-  },
-  "cachedDomains": [
-    {
-      "domain": "string",
-      "cachedAt": "string",
-      "expiresAt": "string",
-      "solveCount": "integer"
+  "success": "boolean",
+  "health": {
+    "available": "boolean",
+    "status": "ready | busy | disabled | error | initializing",
+    "browserAvailable": "boolean",
+    "error": "string | undefined",
+    "stats": {
+      "totalAttempts": "integer",
+      "successCount": "integer",
+      "failureCount": "integer",
+      "cacheHits": "integer",
+      "avgSolveTimeMs": "number",
+      "cacheSize": "integer",
+      "fetchAttempts": "integer",
+      "fetchSuccessCount": "integer",
+      "fetchFailureCount": "integer",
+      "avgFetchTimeMs": "number",
+      "lastSolveAt": "string | undefined",
+      "lastFetchAt": "string | undefined",
+      "lastError": "string | undefined"
     }
-  ],
-  "lastError": {
-    "message": "string",
-    "timestamp": "string"
   }
 }
 ```
@@ -228,23 +224,24 @@ curl -H "x-api-key: cinephage_your_key_here" \
 
 ```json
 {
-  "healthy": true,
-  "stats": {
-    "totalSolves": 150,
-    "successfulSolves": 142,
-    "failedSolves": 8,
-    "successRate": 94.67,
-    "averageSolveTime": 12.5
-  },
-  "cachedDomains": [
-    {
-      "domain": "tracker.example.com",
-      "cachedAt": "2024-06-20T10:00:00Z",
-      "expiresAt": "2024-06-21T10:00:00Z",
-      "solveCount": 5
+  "success": true,
+  "health": {
+    "available": true,
+    "status": "ready",
+    "browserAvailable": true,
+    "stats": {
+      "totalAttempts": 150,
+      "successCount": 142,
+      "failureCount": 8,
+      "cacheHits": 40,
+      "avgSolveTimeMs": 12500,
+      "cacheSize": 12,
+      "fetchAttempts": 200,
+      "fetchSuccessCount": 195,
+      "fetchFailureCount": 5,
+      "avgFetchTimeMs": 900
     }
-  ],
-  "lastError": null
+  }
 }
 ```
 
@@ -252,18 +249,13 @@ curl -H "x-api-key: cinephage_your_key_here" \
 
 ## Clear solver stats
 
-Clears solver statistics and cached cookies.
+Resets solver statistics and clears the cache.
 
 ```
 DELETE /api/captcha-solver/health
 ```
 
-### Query parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| clearCookies | boolean | No | Also clear cached cookies (default: false) |
-| clearStats | boolean | No | Clear statistics (default: true) |
+This endpoint takes no parameters; it always resets statistics and clears the cache.
 
 ### Response codes
 
@@ -271,20 +263,30 @@ DELETE /api/captcha-solver/health
 |------|-------------|
 | 200 | Stats cleared |
 | 401 | Authentication required |
+| 500 | Failed to reset stats |
 
 ### Example request
 
 ```bash
 curl -X DELETE \
   -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/captcha-solver/health?clearCookies=true"
+  "http://localhost:3000/api/captcha-solver/health"
+```
+
+### Example response
+
+```json
+{
+  "success": true,
+  "message": "Cache cleared and statistics reset"
+}
 ```
 
 ---
 
 ## Test solver
 
-Tests captcha solving on a specific URL.
+Tests challenge detection and solving on a specific URL.
 
 ```
 POST /api/captcha-solver/test
@@ -295,7 +297,6 @@ POST /api/captcha-solver/test
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | url | string | Yes | URL to test challenge solving |
-| useCache | boolean | No | Use cached cookies if available (default: true) |
 
 ### Response codes
 
@@ -304,19 +305,32 @@ POST /api/captcha-solver/test
 | 200 | Test completed |
 | 400 | Invalid request body |
 | 401 | Authentication required |
+| 500 | Test failed |
 
 ### Response schema
+
+When no challenge is detected:
+
+```json
+{
+  "success": true,
+  "hasChallenge": false,
+  "message": "No challenge detected for this URL"
+}
+```
+
+When a challenge is detected, the solver attempts to solve it:
 
 ```json
 {
   "success": "boolean",
-  "url": "string",
-  "solveTime": "number",
-  "usedCache": "boolean",
-  "challengeDetected": "boolean",
-  "challengeType": "string | null",
-  "solved": "boolean",
-  "error": "string | null"
+  "hasChallenge": true,
+  "challengeType": "string",
+  "confidence": "number",
+  "solveTimeMs": "number",
+  "cookiesObtained": "integer",
+  "userAgent": "string",
+  "error": "string | undefined"
 }
 ```
 
@@ -327,8 +341,7 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -H "x-api-key: cinephage_your_key_here" \
   -d '{
-    "url": "https://tracker.example.com/api",
-    "useCache": true
+    "url": "https://tracker.example.com/api"
   }' \
   "http://localhost:3000/api/captcha-solver/test"
 ```
@@ -338,12 +351,12 @@ curl -X POST \
 ```json
 {
   "success": true,
-  "url": "https://tracker.example.com/api",
-  "solveTime": 8.5,
-  "usedCache": true,
-  "challengeDetected": true,
-  "challengeType": "cloudflare_challenge",
-  "solved": true,
+  "hasChallenge": true,
+  "challengeType": "cloudflare_managed",
+  "confidence": 0.95,
+  "solveTimeMs": 8500,
+  "cookiesObtained": 3,
+  "userAgent": "Mozilla/5.0 ...",
   "error": null
 }
 ```
@@ -352,15 +365,14 @@ curl -X POST \
 
 | Type | Description |
 |------|-------------|
-| `cloudflare_challenge` | Cloudflare JavaScript challenge |
-| `cloudflare_captcha` | Cloudflare CAPTCHA (Turnstile) |
-| `hcaptcha` | hCaptcha challenge |
-| `recaptcha` | reCaptcha challenge |
-| `cf_turnstile` | Cloudflare Turnstile |
-| `none` | No challenge detected |
+| `cloudflare` | Cloudflare "checking your browser" interstitial |
+| `cloudflare_turnstile` | Cloudflare Turnstile widget |
+| `cloudflare_managed` | Cloudflare managed challenge (JS challenge) |
+| `ddos_guard` | DDoS-Guard protection |
+| `unknown` | Unknown challenge type |
 
 ## See Also
 
-- [Captcha Solver Configuration](/guides/configure/captcha-solver) - UI-based configuration guide
+- [Captcha Solver Configuration](/guides/configure/system/captcha-solver) - UI-based configuration guide
 - [Indexers](/guides/configure/indexers) - Indexers that may require captcha solving
 - [Troubleshooting](/guides/deploy/troubleshooting) - Captcha solver issues

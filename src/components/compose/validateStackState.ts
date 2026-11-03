@@ -102,7 +102,7 @@ export function validationErrorForStep(step: number, s: StackConfiguratorState):
 		return null;
 	}
 
-	// Step 4 (VPN): optional — secrets belong in .env; compose uses variable references only.
+	// Step 4 (VPN): optional - secrets belong in .env; compose uses variable references only.
 	if (step === 4) return null;
 
 	return null;

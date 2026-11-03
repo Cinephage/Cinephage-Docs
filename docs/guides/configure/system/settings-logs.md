@@ -1,7 +1,7 @@
 ---
 title: Settings - Logs
 description: Live log streaming and debugging in Cinephage
-sidebar_position: 20
+sidebar_position: 5
 tags: [settings, logs, debugging, troubleshooting, guide]
 keywords: [logs, debugging, settings, monitoring]
 ---
@@ -12,7 +12,7 @@ Access real-time application logs for debugging and monitoring.
 
 ## Accessing Logs
 
-Navigate to **Settings > Logs**.
+Navigate to **Settings > Monitoring > Logs**.
 
 ## Live Log Stream
 
@@ -50,18 +50,20 @@ Toggle level buttons to show/hide:
 
 Domains categorize log sources:
 
-| Domain      | Description                          |
-| ----------- | ------------------------------------ |
-| `api`       | API endpoint requests                |
-| `scheduler` | Scheduled task execution             |
-| `monitoring`| Content monitoring operations        |
-| `library`   | Library scanning and management      |
-| `streaming` | Media streaming operations           |
-| `subtitles` | Subtitle search and download         |
-| `indexers`  | Indexer communication                |
-| `download`  | Download client operations           |
-| `auth`      | Authentication events                |
-| `captcha`   | Captcha solver operations            |
+| Domain       | Label     | Description                          |
+| ------------ | --------- | ------------------------------------ |
+| `auth`       | Auth      | Authentication events                |
+| `client`     | Client    | Browser/client-side log reports      |
+| `downloads`  | Downloads | Download client operations           |
+| `http`       | HTTP      | HTTP request/response logging        |
+| `imports`    | Imports   | File import and organization         |
+| `indexers`   | Indexers  | Indexer communication                |
+| `livetv`     | Live TV   | Live TV and EPG operations           |
+| `monitoring` | Monitoring| Content monitoring operations        |
+| `scans`      | Scans     | Library scanning                     |
+| `streams`    | Streams   | Media/NZB streaming operations       |
+| `subtitles`  | Subtitles | Subtitle search and download         |
+| `system`     | System    | General system/application events    |
 
 ### Filtering by domain
 
@@ -207,6 +209,6 @@ Never enable `LOG_SENSITIVE` in production. It logs passwords, API keys, and oth
 
 ## See Also
 
-- [Troubleshooting](../deploy/troubleshooting) - Common issues
+- [Troubleshooting](../../deploy/troubleshooting) - Common issues
 - [Environment Variables](/reference/configuration/environment-variables) - Log configuration
 - [Architecture](/explanation/architecture) - System design

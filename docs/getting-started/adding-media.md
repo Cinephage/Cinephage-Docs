@@ -129,10 +129,13 @@ If the series is not in your library, click **Add to Library** and configure the
 **Monitoring:**
 
 - **All Episodes** - Monitor and download the entire series
-- **Future Episodes** - Only new episodes going forward
-- **Missing Episodes** - Only episodes not already in your library
+- **Future** - Only new episodes going forward
+- **Missing** - Only episodes not already in your library
+- **Existing** - Only episodes you already have files for
 - **First Season** - Season 1 only
 - **Last Season** - The latest season only
+- **Recent** - Only recently aired episodes
+- **Pilot** - Only the pilot episode
 - **None** - Add to library without automatic downloading
 
 **Season Folders:**
@@ -164,33 +167,24 @@ After adding a series you can fine-tune which episodes are monitored:
 
 1. Go to **Library > TV** and click on the series
 2. Expand a season to see individual episodes
-3. Toggle the bookmark icon on any episode or season header
+3. Toggle the eye icon on any episode or season header
 
 **Monitoring icons:**
 
-- **Blue bookmark** - Monitored (will be downloaded)
-- **Gray bookmark** - Not monitored
-- **Checkmark** - Already in your library
+- **Eye icon (highlighted)** - Monitored (will be downloaded)
+- **Eye-off icon (muted)** - Not monitored
 
 ## Part 3: Manual Import
 
 If you already have media files, use manual import:
 
-### Import Movies
+### Import Media
 
-1. Go to **Library > Movies**
-2. Click **Import** button
-3. Select the folder containing movie files
+1. Go to **Library > Import** in the navigation
+2. Choose the media type (Movie or TV)
+3. Select the folder containing your files
 4. Cinephage scans and matches files to TMDB
-5. Review matches and confirm import
-
-### Import TV Shows
-
-1. Go to **Library > TV**
-2. Click **Import** button
-3. Select the folder containing series folders
-4. Cinephage matches series and episodes
-5. Review and confirm
+5. Review the detected matches and confirm the import
 
 ### Handling Unmatched Files
 
@@ -274,7 +268,7 @@ Now that you can add media, continue to [Understanding the Interface](understand
 
 ### Related Guides
 - [Import Existing Files](../guides/use/import-existing-files) - Add your current media library to Cinephage
-- [Configure Quality Profiles](../guides/configure/quality-profiles) - Understand and customize quality settings
+- [Configure Quality Profiles](../guides/configure/quality/quality-profiles) - Understand and customize quality settings
 - [Monitor and Upgrade](../guides/use/monitor-and-upgrade) - Set up automatic quality improvements
 
 ### Concepts

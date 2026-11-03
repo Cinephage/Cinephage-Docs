@@ -20,7 +20,7 @@ If you want simpler deployment and easier maintenance, see the [Docker Installat
 Before starting, ensure you have:
 
 - **A Linux server** (Ubuntu 22.04+, Debian 12+, or similar with systemd)
-- **Node.js 20+** (we will cover installation)
+- **Node.js 22+** (we will cover installation)
 - **Git** installed
 - **A TMDB API key** (free registration required)
 - **Root or sudo access** to the server
@@ -43,8 +43,8 @@ df -h
 If you are experienced with Linux, here are the essential commands:
 
 ```bash
-# Install Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Install Node.js 22
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs ffmpeg git
 
 # Create user and directories
@@ -55,7 +55,7 @@ sudo chown cinephage:cinephage /opt/cinephage
 # Download and build
 sudo -u cinephage -H bash -c '
 cd /opt/cinephage
-git clone https://github.com/MoldyTaint/Cinephage.git .
+git clone https://github.com/cinephage/cinephage.git .
 npm ci --production=false
 npm run build
 '
@@ -83,7 +83,7 @@ User=cinephage
 Group=cinephage
 WorkingDirectory=/opt/cinephage
 EnvironmentFile=/opt/cinephage/.env
-ExecStart=/usr/bin/node build/index.js
+ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
 
@@ -103,17 +103,17 @@ For detailed explanations of each step, continue reading below.
 
 ### Step 1: Install Node.js
 
-Cinephage requires Node.js 20 or later. Install it using the official NodeSource repository:
+Cinephage requires Node.js 22 or later. Install it using the official NodeSource repository:
 
 ```bash
 # Download and run the NodeSource setup script
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 
 # Install Node.js
 sudo apt-get install -y nodejs
 
 # Verify installation
-node --version  # Should show v20.x.x or higher
+node --version  # Should show v22.x.x or higher
 npm --version   # Should show 10.x.x or higher
 ```
 
@@ -161,7 +161,7 @@ sudo -u cinephage -H bash
 cd /opt/cinephage
 
 # Clone the repository
-git clone https://github.com/MoldyTaint/Cinephage.git .
+git clone https://github.com/cinephage/cinephage.git .
 
 # Install dependencies
 npm ci --production=false
@@ -252,7 +252,7 @@ Create a systemd service file for automatic startup:
 sudo tee /etc/systemd/system/cinephage.service << 'EOF'
 [Unit]
 Description=Cinephage - Self-hosted Media Acquisition System
-Documentation=https://github.com/MoldyTaint/Cinephage
+Documentation=https://github.com/cinephage/cinephage
 After=network.target
 
 [Service]
@@ -266,7 +266,7 @@ EnvironmentFile=/opt/cinephage/.env
 Environment=NODE_ENV=production
 
 # Start command
-ExecStart=/usr/bin/node build/index.js
+ExecStart=/usr/bin/node server.js
 
 # Restart policy
 Restart=always
@@ -479,7 +479,7 @@ Then restart the service.
 
 ### Node.js Version Issues
 
-Ensure you have Node.js 20+:
+Ensure you have Node.js 22+:
 
 ```bash
 node --version

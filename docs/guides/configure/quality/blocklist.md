@@ -1,7 +1,7 @@
 ---
 title: Blocklist
 description: Manage failed and rejected releases to prevent re-downloading problematic content
-sidebar_position: 11
+sidebar_position: 4
 tags: [blocklist, failed-downloads, configuration, guide]
 keywords: [blocklist, failed downloads, rejected releases]
 ---
@@ -37,12 +37,15 @@ The Blocklist prevents Cinephage from re-downloading releases that have previous
 
 Cinephage automatically blocklists releases when:
 
-| Event            | Block Reason      | Duration  |
-| ---------------- | ----------------- | --------- |
-| Download fails   | `download_failed` | Permanent |
-| Import fails     | `import_failed`   | Permanent |
-| Manual rejection | `manual`          | Permanent |
-| Wrong language   | `wrong_language`  | Permanent |
+| Event               | Block Reason        | Duration  |
+| ------------------- | -------------------- | --------- |
+| Download fails      | `download_failed`    | Permanent |
+| Import fails        | `import_failed`      | Permanent |
+| Quality mismatch     | `quality_mismatch`   | Permanent |
+| Duplicate release    | `duplicate`           | Permanent |
+| Bad release detected | `bad_release`         | Permanent |
+| Blocked file extension | `blocked_extension` | Permanent |
+| Manual rejection    | `manual`              | Permanent |
 
 ### Block identifiers
 
@@ -58,7 +61,11 @@ Releases are identified by:
 
 ### View blocklist
 
-Navigate to **Settings > Tasks > Blocklist**:
+Navigate to **Settings > Blocklist > Blocked Releases**:
+
+:::note[Not the same as Blocked Media]
+This page manages release-level blocks (specific torrents/NZBs that failed or were rejected). It's a separate feature from **Settings > Blocklist > Blocked Media**, which excludes an entire movie or series from being added/searched at all.
+:::
 
 | Column           | Description        |
 | ---------------- | ------------------ |
@@ -90,22 +97,29 @@ Remove items from blocklist:
 
 ### System-Generated reasons
 
-| Reason             | When Used                                       |
-| ------------------ | ----------------------------------------------- |
-| `download_failed`  | Torrent dead, NZB removed, connection error     |
-| `import_failed`    | File corrupted, wrong format, permission denied |
-| `upgrade_rejected` | Better release found before download completed  |
-| `manual`           | User clicked "Block" manually                   |
+| Reason              | When Used                                        |
+| ------------------- | ------------------------------------------------- |
+| `download_failed`   | Torrent dead, NZB removed, connection error        |
+| `import_failed`     | File corrupted, wrong format, permission denied    |
+| `quality_mismatch`  | Downloaded release didn't match the expected quality |
+| `duplicate`         | Release duplicates content already grabbed          |
+| `bad_release`       | Release flagged as fake/bad                         |
+| `blocked_extension` | File extension is on the blocked extensions list    |
+| `manual`            | User clicked "Block" manually                       |
 
 ### Custom reasons
 
-When blocking manually, you can specify a custom reason:
+Manual blocks always use the `manual` reason code, but you can attach a free-text note/message explaining why:
 
 ```
-Reason: "Wrong episode"
-Reason: "Fake release - password protected"
-Reason: "Hardcoded Spanish subs"
+Message: "Wrong episode"
+Message: "Fake release - password protected"
+Message: "Hardcoded Spanish subs"
 ```
+
+:::note[Expiring blocks]
+Manual blocks can optionally be set to expire after a number of hours instead of staying permanent - useful for a "temporary" block you want to revisit.
+:::
 
 ---
 
@@ -274,6 +288,6 @@ If blocklist is impacting performance:
 
 ## See Also
 
-- [Search & Download](../use/search-and-download) - How releases are found and grabbed
+- [Search & Download](../../use/search-and-download) - How releases are found and grabbed
 - [Delay Profiles](./delay-profiles) - Control when releases are grabbed
-- [Troubleshooting](../deploy/troubleshooting) - Common issues
+- [Troubleshooting](../../deploy/troubleshooting) - Common issues

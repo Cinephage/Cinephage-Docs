@@ -1,7 +1,7 @@
 ---
 title: Configure NNTP servers
 description: Set up Usenet NNTP servers for streaming and article checking
-sidebar_position: 12
+sidebar_position: 4
 tags: [nntp, usenet, streaming, configuration, guide]
 keywords: [nntp, usenet, servers, streaming]
 ---
@@ -34,8 +34,9 @@ Navigate to **Settings > Integrations > NNTP Servers**.
 | **SSL**        | Enable SSL/TLS encryption                | Recommended              |
 | **Username**   | Your Usenet provider username            | From provider            |
 | **Password**   | Your Usenet provider password            | From provider            |
-| **Connections**| Maximum concurrent connections            | `8` (check provider limit)|
-| **Priority**   | Server priority (lower = higher priority)| `1`                      |
+| **Connections**| Maximum concurrent connections (1-50)    | `8` (check provider limit)|
+| **Priority**   | Server priority, 0-99 (lower = higher priority)| `1`                |
+| **Download Client** | Optional - associate this NNTP server with a specific usenet download client | - |
 
 ### Step 3: test connection
 
@@ -179,5 +180,5 @@ Configure at least 2 servers:
 ## See Also
 
 - [NZB Streaming](nzb-streaming) - Stream from Usenet
-- [Download Clients](download-clients) - Configure NZBGet/SABnzbd
-- [Troubleshooting](../deploy/troubleshooting) - General issues
+- [Download Clients](../download-clients) - Configure NZBGet/SABnzbd
+- [Troubleshooting](../../deploy/troubleshooting) - General issues

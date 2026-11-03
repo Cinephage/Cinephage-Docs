@@ -1,8 +1,8 @@
 [submodule "repos/cinephage"]
 	path = repos/cinephage
-	url = https://github.com/MoldyTaint/Cinephage.git
+	url = https://github.com/cinephage/cinephage.git
 	branch = main
 [submodule "repos/cinephage-dev"]
 	path = repos/cinephage-dev
-	url = https://github.com/MoldyTaint/Cinephage.git
+	url = https://github.com/cinephage/cinephage.git
 	branch = dev

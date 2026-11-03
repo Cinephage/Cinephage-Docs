@@ -13,10 +13,12 @@ Practical, task-oriented guides for getting things done with Cinephage.
 Set up and customize your Cinephage instance:
 
 - [Download Clients](/guides/configure/download-clients) - qBittorrent, SABnzbd, Deluge, and more
-- [Quality Profiles](/guides/configure/quality-profiles) - Define quality preferences and cutoffs
+- [Quality Profiles](/guides/configure/quality/quality-profiles) - Define quality preferences and cutoffs
 - [Indexers](/guides/configure/indexers) - Add search sources
-- [Subtitles](/guides/configure/subtitles) - Language preferences and providers
-- [Live TV](/guides/configure/live-tv) - Live TV and EPG setup
+- [Subtitles](/guides/configure/languages/subtitles) - Language preferences and providers
+- [Live TV](/guides/configure/streaming/live-tv) - Live TV and EPG setup
+- [Radarr/Sonarr Compatibility](/guides/configure/system/arr-compat) - Connect autobrr, Pulsarr, Notifiarr, Overseerr
+- [Sidecar Files](/guides/configure/system/sidecar-files) - NFO and artwork files for Jellyfin/Kodi
 
 ## Deploy
 

@@ -106,7 +106,7 @@ export function buildNginxConf(s: ResolvedStack): string {
 	const upstreams = collectUpstreams(s);
 	const apex = normalizeApexDomain(s.apexDomain);
 	const blocks: string[] = [
-		'# Nginx — generated example. Verify proxy headers and TLS (ssl_certificate) for production.',
+		'# Nginx - generated example. Verify proxy headers and TLS (ssl_certificate) for production.',
 		'# Hosts use one label + apex, e.g. cinephage.' + apex,
 		''
 	];
