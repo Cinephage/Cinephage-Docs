@@ -24,7 +24,13 @@ jobs:
         # No --merge: submodules are in detached HEAD at the recorded SHA, and
         # upstream history can diverge (force-pushes), which makes merging fail.
         # A plain checkout of the remote branch tip just moves the gitlink.
-        run: git submodule update --remote
+        # Fetch branch refs explicitly: actions/checkout clones submodules
+        # shallow (fetch-depth defaults to 1), so refs/remotes/origin/<branch>
+        # is missing for non-default branches until fetched.
+        run: |
+          git submodule update --init
+          git submodule foreach 'git fetch --prune origin "+refs/heads/*:refs/remotes/origin/*"'
+          git submodule update --remote
 
       - name: Check for changes
         id: changes
