@@ -14,287 +14,169 @@ This reference lists all available tokens for customizing file naming patterns i
 
 Naming tokens allow dynamic construction of filenames and paths based on media metadata. Tokens are enclosed in curly braces `{}` and are replaced with actual values during organization.
 
-## Movie Tokens
+Canonical token names have no spaces (e.g. `{CleanTitle}`), but many tokens also accept one or more older, space-containing alias names for convenience and backward compatibility (e.g. `{Movie CleanTitle}`, `{Series CleanTitle}`) - both forms work identically. This page lists the canonical name first, with aliases noted underneath.
 
-Tokens available for movie file naming.
+## Movie tokens
 
-| Token | Description | Example |
-|-------|-------------|---------|
-| `{Movie Title}` | Full movie title | `Inception` |
-| `{Movie TitleThe}` | Title with "The" moved to end | `Dark Knight, The` |
-| `{Movie CleanTitle}` | Title with special chars removed | `Inception` |
-| `{OriginalTitle}` | Title in the media's original language | `七人の侍` |
-| `{OriginalCleanTitle}` | Original title with special chars removed | `七人の侍` |
-| `{Year}` | Release year | `2010` |
-| `{Release Year}` | Full release date (YYYY-MM-DD) | `2010-07-16` |
-| `{Edition Tags}` | Edition tags (Director's Cut, etc.) | `Director's Cut` |
-| `{Quality Full}` | Full quality string | `1080p BluRay` |
-| `{Quality Title}` | Quality without source | `1080p` |
-| `{MediaInfo VideoCodec}` | Video codec | `x264` |
-| `{MediaInfo AudioCodec}` | Audio codec | `DTS` |
-| `{MediaInfo AudioChannels}` | Audio channels | `5.1` |
-| `{MediaInfo VideoBitDepth}` | Video bit depth | `10` |
-| `{MediaInfo VideoDynamicRange}` | HDR/SDR | `HDR` |
-| `{MediaInfo VideoDynamicRangeType}` | HDR type | `HDR10` |
-| `{MediaInfo AudioLanguages}` | Audio languages | `en` |
-| `{MediaInfo SubtitleLanguages}` | Subtitle languages | `en,es` |
-| `{MediaInfo Simple}` | Simplified mediainfo | `x264 DTS` |
-| `{MediaInfo Full}` | Full mediainfo string | `x264 DTS 5.1` |
-| `{IMDb Id}` | IMDb ID | `tt1375666` |
-| `{TMDb Id}` | TMDb ID | `27205` |
-| `{Genres}` | Movie genres | `Action, Sci-Fi` |
-| `{Studio}` | Studio name | `Warner Bros` |
-| `{Collection}` | Movie collection name | `The Dark Knight Collection` |
+| Token | Aliases | Description |
+|-------|---------|-------------|
+| `{Title}` | `{Movie Title}` | Title as-is. `{Title:ES}` for a localized title, `{Title:First}` for first-letter folder organization (A/, B/, ...) |
+| `{CleanTitle}` | `{MovieCleanTitle}`, `{Movie CleanTitle}` | Title with special characters removed. Supports the same `:ES`/`:First` format specs |
+| `{OriginalTitle}` | `{MovieOriginalTitle}`, `{Movie OriginalTitle}` | Original-language title as-is |
+| `{OriginalCleanTitle}` | `{MovieOriginalCleanTitle}` | Original-language title with special characters removed |
+| `{Year}` | `{Release Year}` | Release year |
+| `{TmdbId}` | `{TMDB Id}`, `{TMDb Id}` | TMDB ID number |
+| `{ImdbId}` | `{IMDb Id}` | IMDb ID (e.g. `tt1234567`) |
+| `{MediaId}` | `{MovieId}` | Media-server-formatted ID - `{tmdb-12345}` for Plex/Emby or `[tmdbid-12345]` for Jellyfin, based on the Media Server ID Format setting |
+| `{Edition}` | `{Edition Tags}` | Edition (Director's Cut, Extended, etc.) |
 
-## TV Tokens
+## Collection tokens
 
-Tokens available for TV episode file naming.
+| Token | Aliases | Description |
+|-------|---------|-------------|
+| `{Collection}` | `{Movie Collection}` | TMDB collection name |
+| `{CleanCollectionTitle}` | - | Collection name with special characters removed |
 
-| Token | Description | Example |
-|-------|-------------|---------|
-| `{Series Title}` | Full series title | `Breaking Bad` |
-| `{Series TitleThe}` | Title with "The" moved to end | `Office, The` |
-| `{Series CleanTitle}` | Title with special chars removed | `Breaking Bad` |
-| `{Series TitleYear}` | Title with year | `The Office (2005)` |
-| `{Season}` | Season number (zero-padded) | `01` |
-| `{Season:0}` | Season number (no padding) | `1` |
-| `{Season:00}` | Season number (zero-padded) | `01` |
-| `{Episode}` | Episode number (zero-padded) | `05` |
-| `{Episode:0}` | Episode number (no padding) | `5` |
-| `{Episode:00}` | Episode number (zero-padded) | `05` |
-| `{Episode Title}` | Episode title | `Pilot` |
-| `{Episode CleanTitle}` | Episode title cleaned | `Pilot` |
-| `{Absolute Episode}` | Absolute episode number | `100` |
-| `{Air Date}` | Original air date | `2010-01-15` |
-| `{Air Year}` | Air year | `2010` |
-| `{Quality Full}` | Full quality string | `1080p WEB-DL` |
-| `{Quality Title}` | Quality without source | `1080p` |
-| `{MediaInfo VideoCodec}` | Video codec | `x264` |
-| `{MediaInfo AudioCodec}` | Audio codec | `AAC` |
-| `{MediaInfo AudioChannels}` | Audio channels | `2.0` |
-| `{MediaInfo VideoBitDepth}` | Video bit depth | `8` |
-| `{MediaInfo VideoDynamicRange}` | HDR/SDR | `SDR` |
-| `{MediaInfo AudioLanguages}` | Audio languages | `en,ja` |
-| `{MediaInfo SubtitleLanguages}` | Subtitle languages | `en` |
-| `{Series Genres}` | Series genres | `Drama, Crime` |
-| `{Network}` | TV network | `AMC` |
-| `{IMDb Id}` | Series IMDb ID | `tt0903747` |
-| `{TVDb Id}` | TVDb ID | `81189` |
-| `{TVMDb Id}` | TMDb series ID | `1396` |
-| `{TVRage Id}` | TVRage ID | `18164` |
+## Series tokens
 
-## Path Tokens
+| Token | Description |
+|-------|-------------|
+| `{SeriesTitle}` | Series title as-is |
+| `{SeriesCleanTitle}` | Series title with special characters removed |
+| `{Year}` | First air year |
+| `{SeriesOriginalTitle}` | Original series title as-is |
+| `{SeriesOriginalCleanTitle}` | Original series title with special characters removed |
+| `{TvdbId}` (alias `{TVDb Id}`, `{TVMDb Id}`) | TVDB ID number |
+| `{TmdbId}` (alias `{TMDB Id}`, `{TMDb Id}`) | TMDB ID number |
+| `{SeriesId}` | Media-server-formatted ID, TVDB-preferred (falls back to TMDB) |
 
-Tokens for constructing file paths.
+## Episode tokens
 
-| Token | Description | Example |
-|-------|-------------|---------|
-| `{Source Path}` | Original file location | `/downloads/movie.mkv` |
-| `{Source Filename}` | Original filename | `movie.mkv` |
-| `{Source Title}` | Original release title | `Movie.2010.1080p.BluRay` |
-| `{Destination Path}` | Target directory | `/movies/Inception (2010)` |
-| `{MediaInfo VideoFormat}` | Container format | `MKV` |
-| `{Original Title}` | Original release name | `Movie.2010.1080p` |
+| Token | Aliases | Description |
+|-------|---------|-------------|
+| `{Season}` | - | Season number. `{Season:00}` for zero-padding |
+| `{Episode}` | - | Episode number(s). `{Episode:00}` for zero-padding. Multi-episode files are formatted per the Multi-Episode Style setting: `range` (`E01-E03`, default), `extend` (`E01E02E03`), `duplicate` (`E01-E02-E03`), `repeat`, or `scene` |
+| `{EpisodeTitle}` | `{Episode Title}` | Episode title as-is |
+| `{EpisodeCleanTitle}` | - | Episode title with special characters removed |
+| `{Absolute}` | `{Absolute Episode}` | Absolute episode number (anime). `{Absolute:000}` for padding |
+| `{AirDate}` | `{Air Date}` | Air date (YYYY-MM-DD, for daily shows) |
 
-## Indexer Tokens
+## Quality tokens
 
-Tokens related to indexer and download information.
+| Token | Aliases | Description |
+|-------|---------|-------------|
+| `{Quality}` | - | `Source-Resolution` string, e.g. `Bluray-1080p`. Not aliased to any docs-style name to avoid confusion with `{Resolution}` |
+| `{QualityFull}` | `{Quality Full}`, `{Quality Source}` | Quality with PROPER/REPACK markers, e.g. `Proper Bluray-1080p` |
+| `{Resolution}` | `{Quality Title}` | Resolution only, e.g. `1080p` |
+| `{Source}` | `{Quality Type}` | Source only, e.g. `Bluray`, `WEB-DL` |
+| `{Proper}` | - | Literal `PROPER` if applicable, else empty |
+| `{Repack}` | - | Literal `REPACK` if applicable, else empty |
 
-| Token | Description | Example |
-|-------|-------------|---------|
-| `{Indexer}` | Indexer name | `1337x` |
-| `{IndexerId}` | Indexer ID | `1337x` |
-| `{Download Client}` | Download client name | `qBittorrent` |
-| `{DownloadId}` | Download client ID | `hash123` |
+## Video tokens
 
-## Quality Tokens
+| Token | Aliases | Description |
+|-------|---------|-------------|
+| `{VideoCodec}` | `{Codec}`, `{MediaInfo VideoCodec}` | Video codec (x264, x265, AV1) |
+| `{HDR}` | `{MediaInfo VideoDynamicRangeType}` | HDR format (DV, HDR10, HDR10+) |
+| `{BitDepth}` | `{MediaInfo VideoBitDepth}` | Bit depth (8, 10, 12) |
+| `{3D}` | - | Literal `3D` if applicable, else empty |
 
-Detailed quality information tokens.
+## Audio tokens
 
-| Token | Description | Example |
-|-------|-------------|---------|
-| `{Quality}` | Quality name | `1080p` |
-| `{Quality Type}` | Quality type | `Bluray` |
-| `{Quality Source}` | Quality source | `Bluray-1080p` |
-| `{Quality Modifier}` | Quality modifier | `REMUX` |
-| `{Quality Revision}` | Quality revision | `v2` |
-| `{Preferred Word}` | Matched preferred word | `Remux` |
-| `{Release Group}` | Release group name | `SPARKS` |
-| `{Custom Format}` | Matched custom format | `My Format` |
+| Token | Aliases | Description |
+|-------|---------|-------------|
+| `{AudioCodec}` | `{MediaInfo AudioCodec}` | Audio codec (TrueHD, DTS-HD MA, etc.) |
+| `{AudioChannels}` | `{MediaInfo AudioChannels}`, `{MediaInfo AudioChannelsFriendly}`, `{Audio}`, `{Audio Channels}` | Audio channels (5.1, 7.1, etc.) |
+| `{AudioLanguages}` | - | Audio languages present in the file |
 
-## Size and Language Tokens
+## Release tokens
 
-Tokens for file size and language information.
+| Token | Aliases | Description |
+|-------|---------|-------------|
+| `{ReleaseGroup}` | `{Group}`, `{Release Group}` | Release group name |
 
-| Token | Description | Example |
-|-------|-------------|---------|
-| `{Size}` | File size in bytes | `1073741824` |
-| `{Size on Disk}` | Size on disk | `1073741824` |
-| `{Languages}` | All languages | `en,es,fr` |
-| `{Original Language}` | Original language | `en` |
+## Conditional tokens
 
-## Date Tokens
+| Pattern | Description |
+|---------|-------------|
+| `{[{Token}]}` | Include the bracketed content only if `Token` has a value - e.g. `{[{HDR}]}` renders `[HDR10]` when HDR data exists, or nothing at all when it doesn't |
+| `{prefix{Token}suffix}` | Include a prefix/suffix around `Token` only if it has a value |
+| `{edition-{Edition}}` | Example of the above: renders `edition-Directors Cut` only when an edition exists |
 
-Various date formats for organization.
+## Token modifiers
 
-| Token | Description | Example |
-|-------|-------------|---------|
-| `{Release Date}` | Release date | `2010-07-16` |
-| `{Release Date:yyyy}` | Release year | `2010` |
-| `{Release Date:MM}` | Release month | `07` |
-| `{Release Date:dd}` | Release day | `16` |
-| `{Added Date}` | Date added to library | `2024-01-15` |
-| `{Added Date:yyyy-MM-dd}` | Added date formatted | `2024-01-15` |
-| `{Import Date}` | Import date | `2024-01-15` |
-| `{Cinephage Import Date}` | Cinephage import date | `2024-01-15` |
+Format specs are appended after a colon inside the token, e.g. `{Season:00}`.
 
-## Technical Tokens
+| Modifier | Applies to | Description |
+|----------|------------|-------------|
+| `:00` | `{Season}`, `{Episode}`, `{Absolute}` | Zero-pad to the given number of digits (`:0` = no padding, `:00` = 2 digits, `:000` = 3 digits) |
+| `:ES` (any 2-3 letter language code) | `{Title}`, `{CleanTitle}` | Render the localized title for that language if available, falling back to the main title |
+| `:First` | `{Title}`, `{CleanTitle}`, `{OriginalTitle}` | Render just the first alphanumeric character, uppercased - for A/B/C-style folder organization |
 
-Advanced tokens for technical metadata.
+## Reserved characters
 
-| Token | Description | Example |
-|-------|-------------|---------|
-| `{MediaInfo VideoBitrate}` | Video bitrate | `10000` |
-| `{MediaInfo VideoFramerate}` | Frame rate | `23.976` |
-| `{MediaInfo VideoResolution}` | Resolution | `1920x1080` |
-| `{MediaInfo VideoAspectRatio}` | Aspect ratio | `1.78` |
-| `{MediaInfo AudioBitrate}` | Audio bitrate | `1536` |
-| `{MediaInfo AudioSampleRate}` | Audio sample rate | `48000` |
-| `{MediaInfo AudioChannelsFriendly}` | Friendly channel count | `5.1` |
-| `{MediaInfo SubtitleCount}` | Number of subtitles | `3` |
+Colons in rendered values are replaced according to the **Colon Replacement** naming setting (`delete`, `dash`, `spaceDash`, `spaceDashSpace`, or `smart` - `smart` is the default and picks a style based on context, e.g. treating `Show: Subtitle` differently from a time-of-day colon). Other filesystem-invalid characters (`/ \ ? * " < > |`) are stripped from generated titles.
 
-## Conditional Tokens
-
-Tokens that support conditional logic.
-
-| Token | Description | Usage |
-|-------|-------------|-------|
-| `{Series Tags}` | Series tags | `{Series Tags:}` |
-| `{Episode Tags}` | Episode tags | `{Episode Tags:}` |
-| `{Custom Formats}` | All Custom Formats | `{Custom Formats:,}` |
-
-## Special Characters
-
-Special characters for formatting.
-
-| Character | Description | Example |
-|-----------|-------------|---------|
-| `\` | Path separator | `\{Movie Title}\` |
-| `/` | Alternative separator | `/{Movie Title}/` |
-| `"` | Quote in filename | `"{Movie Title}"` |
-| `'` | Apostrophe | `'{Movie Title}'` |
-
-## Usage Examples
+## Usage examples
 
 ### Movie naming examples
 
 **Standard movie file:**
 ```
-{Movie Title} ({Year}) - {Quality Full}
-# Result: Inception (2010) - 1080p BluRay
-```
-
-**With media info:**
-```
-{Movie Title} ({Year}) [{MediaInfo Simple}]
-# Result: Inception (2010) [x264 DTS]
+{Title} ({Year}) - {QualityFull}
+# Result: Inception (2010) - Bluray-1080p
 ```
 
 **With release group:**
 ```
-{Movie Title} ({Year}) - {Quality Full} - {Release Group}
-# Result: Inception (2010) - 1080p BluRay - SPARKS
+{Title} ({Year}) - {QualityFull} - {ReleaseGroup}
+# Result: Inception (2010) - Bluray-1080p - SPARKS
 ```
 
 **Path with collection:**
 ```
-{Collection}\{Movie Title} ({Year})\{Movie Title} ({Year}) - {Quality Full}
-# Result: The Dark Knight Collection\The Dark Knight (2008)\The Dark Knight (2008) - 1080p BluRay
+{Collection}/{Title} ({Year})/{Title} ({Year}) - {QualityFull}
+# Result: The Dark Knight Collection/The Dark Knight (2008)/The Dark Knight (2008) - Bluray-1080p
+```
+
+Folder levels are separated with `/` only - the pattern is split on forward slash before each segment is rendered. A literal `\` is not a path separator; it's stripped as a filesystem-invalid character (see Reserved characters below).
+
+**Conditional edition tag:**
+```
+{Title} ({Year}) {[- {Edition}]}
+# Result (with edition): Blade Runner (1982) - Director's Cut
+# Result (without edition): Blade Runner (1982)
 ```
 
 ### TV naming examples
 
 **Standard episode:**
 ```
-{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}
+{SeriesTitle} - S{Season:00}E{Episode:00} - {EpisodeTitle}
 # Result: Breaking Bad - S01E01 - Pilot
-```
-
-**With quality:**
-```
-{Series Title} - S{Season:00}E{Episode:00} - {Episode Title} [{Quality Full}]
-# Result: Breaking Bad - S01E01 - Pilot [1080p WEB-DL]
 ```
 
 **Season folder:**
 ```
-{Series Title}\Season {Season:00}\{Series Title} - S{Season:00}E{Episode:00}
-# Result: Breaking Bad\Season 01\Breaking Bad - S01E01
+{SeriesTitle}/Season {Season:00}/{SeriesTitle} - S{Season:00}E{Episode:00}
+# Result: Breaking Bad/Season 01/Breaking Bad - S01E01
 ```
 
 **Anime with absolute numbering:**
 ```
-{Series Title} - {Absolute Episode:000} - {Episode Title}
+{SeriesTitle} - {Absolute:000} - {EpisodeTitle}
 # Result: One Piece - 100 - The Legend Begins
 ```
 
-### Path organization examples
-
-**Movies by quality:**
+**Multi-episode file (default range style):**
 ```
-Movies\{Quality Title}\{Movie Title} ({Year})
-# Result: Movies\1080p\Inception (2010)
+{SeriesTitle} - S{Season:00}E{Episode:00}
+# Result for a 3-episode file: Breaking Bad - S01E01-E03
 ```
-
-**TV by year:**
-```
-TV\{Series Title}\{Air Year}\{Series Title} - S{Season:00}E{Episode:00}
-# Result: TV\Breaking Bad\2008\Breaking Bad - S01E01
-```
-
-**By genre:**
-```
-{Genres}\{Movie Title} ({Year})
-# Result: Action, Sci-Fi\Inception (2010)
-```
-
-**By indexer:**
-```
-{Indexer}\{Movie Title} ({Year}) - {Quality Full}
-# Result: 1337x\Inception (2010) - 1080p BluRay
-```
-
-## Token Modifiers
-
-Tokens support modifiers for formatting control.
-
-| Modifier | Description | Example |
-|----------|-------------|---------|
-| `:0` | No zero padding | `{Season:0}` → `1` |
-| `:00` | Zero padding | `{Season:00}` → `01` |
-| `:000` | Triple padding | `{Absolute Episode:000}` → `001` |
-| `:yyyy` | Year format | `{Release Date:yyyy}` → `2010` |
-| `:MM` | Month format | `{Release Date:MM}` → `07` |
-| `:dd` | Day format | `{Release Date:dd}` → `16` |
-
-## Reserved Characters
-
-Characters that may need escaping in filenames:
-
-| Character | Issue | Solution |
-|-----------|-------|----------|
-| `:` | Invalid on Windows | Automatically replaced with `-` |
-| `/` | Path separator | Use `\` for folders |
-| `\` | Path separator | Use for folder separation |
-| `?` | Wildcard | Automatically removed |
-| `*` | Wildcard | Automatically removed |
-| `"` | Quote | Automatically replaced with `'` |
-| `<` `>` | Reserved | Automatically removed |
-| `\|` | Reserved | Automatically removed |
 
 ## See Also
 
 - [Indexer Definitions](indexer-definitions) - YAML format for defining custom indexers
 - [How to Configure Indexers](/guides/configure/indexers) - Step-by-step guide for configuring indexers
 - [How to Organize Files](/guides/use/organize-files) - Guide to file organization and naming patterns
-- [Root Folders](/guides/configure/root-folders) - Configure Root Folders and naming settings
+- [Root Folders](/guides/configure/library/root-folders) - Configure Root Folders and naming settings

@@ -27,8 +27,8 @@ If you see a login screen instead of the wizard, initial setup has already been 
 The first step is creating your administrator account:
 
 1. Enter your **username** (3-32 characters, alphanumeric and underscores only)
-2. Enter your **email address** (optional, for display purposes only)
-3. Create a **password** (minimum 8 characters)
+2. Enter your **email address** (required for account creation)
+3. Create a **password** (minimum 8 characters, with at least one uppercase letter, one lowercase letter, one number, and one special character)
 4. Confirm your password
 5. Click **Create Account**
 
@@ -136,7 +136,7 @@ After completing the wizard, configure these essential settings:
 
 ### 1. Quality Profiles
 
-Navigate to **Settings > Profiles**:
+Navigate to **Settings > Library & Storage > Quality Settings** (Profiles tab):
 
 1. Review the default profiles (Quality, Balanced, Compact, Streamer)
 2. Select a default profile for movies
@@ -162,7 +162,7 @@ Start with one or two indexers. You can add more later.
 
 ### 3. Monitoring Settings
 
-Navigate to **Settings > Tasks**:
+Navigate to **Settings > Monitoring > Tasks**:
 
 1. Review the monitoring tasks
 2. Enable tasks you want to run automatically:
@@ -272,7 +272,7 @@ Now that Cinephage is fully configured, continue to [Adding Media](adding-media)
 ### Configuration Guides
 - [Configure Download Clients](../guides/configure/download-clients) - Set up qBittorrent, SABnzbd, and others
 - [Configure Indexers](../guides/configure/indexers) - Add indexers using YAML definitions
-- [Set Up Quality Profiles](../guides/configure/quality-profiles) - Configure quality scoring and upgrade behavior
+- [Set Up Quality Profiles](../guides/configure/quality/quality-profiles) - Configure quality scoring and upgrade behavior
 
 ### Help & Support
 - [Getting Help](./getting-help) - Community support and troubleshooting resources

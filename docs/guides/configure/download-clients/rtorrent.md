@@ -12,55 +12,39 @@ This guide shows you how to configure rTorrent as your download client in Cineph
 
 ## Prerequisites
 
-- rTorrent installed and running with XML-RPC enabled
-- ruTorrent or direct XML-RPC access configured
+- rTorrent installed and running, with ruTorrent (or another HTTP-accessible RPC2 endpoint) in front of it
 - Cinephage installed and running
 - Network connectivity between Cinephage and rTorrent
 
-## Step 1: Enable rTorrent XML-RPC
+:::note[HTTP, not raw SCGI]
+Cinephage talks to rTorrent over **HTTP**, sending XML-RPC requests to an `RPC2` endpoint (for example `http://host:port/RPC2`, or `http://host:port/RUTORRENT/plugins/httprpc/action.php` when using ruTorrent's httprpc plugin). rTorrent's own `scgi_port`/`scgi_local` directives speak the raw SCGI protocol, which Cinephage cannot connect to directly - you need a web server (ruTorrent, or nginx/Apache with `scgi_pass`) bridging HTTP to that SCGI socket.
+:::
 
-rTorrent uses XML-RPC for remote control. You must enable this for Cinephage to connect.
+## Step 1: Expose an HTTP-accessible RPC2 endpoint
 
-### Edit .rtorrent.rc
+The most common setup is rTorrent + ruTorrent, where ruTorrent's web server already exposes an HTTP endpoint for RPC calls.
 
-1. Locate your rTorrent configuration file:
-   - Linux: `~/.rtorrent.rc` or `~/.config/rtorrent/rtorrent.rc`
+### Using ruTorrent (recommended)
 
-2. Add or verify the following settings:
-
-```bash
-# Enable XML-RPC
-scgi_port = localhost:5000
-
-# Or use Unix socket (more secure)
-# scgi_local = /tmp/rtorrent.sock
-
-# Enable network access (if needed)
-network.scgi.open_port = 0.0.0.0:5000
-```
-
-3. Restart rTorrent:
+1. Install rTorrent with ruTorrent (many Docker images, e.g. `linuxserver/rutorrent`, bundle both)
+2. Ensure rTorrent's `.rtorrent.rc` has SCGI enabled so ruTorrent can reach it:
 
 ```bash
-# If running as systemd service
-sudo systemctl restart rtorrent
-
-# Or kill and restart manually
-pkill rtorrent
-rtorrent
+# In .rtorrent.rc - local socket ruTorrent connects to internally
+scgi_local = /tmp/rtorrent.sock
 ```
 
-### Verify XML-RPC is working
+3. ruTorrent's web server (usually on port `80` or `8080`) exposes the RPC2 endpoint at `/RPC2` or, if httprpc plugin is enabled, at `/plugins/httprpc/action.php`
+4. Note the ruTorrent web port and any URL base your reverse proxy uses - you'll enter these in Cinephage
 
-Test the connection:
+### Verify the endpoint is reachable
 
 ```bash
-# Using xmlrpc tool (install with: pip install xmlrpc-client)
-xmlrpc localhost:5000 system.listMethods
-
-# Or using curl
-curl -d "<?xml version='1.0'?><methodCall><methodName>system.listMethods</methodName></methodCall>" http://localhost:5000
+curl -d "<?xml version='1.0'?><methodCall><methodName>system.listMethods</methodName></methodCall>" \
+  http://localhost:8080/RPC2
 ```
+
+A valid XML-RPC response confirms the endpoint is reachable over HTTP.
 
 ## Step 2: Add rTorrent to Cinephage
 
@@ -74,12 +58,14 @@ curl -d "<?xml version='1.0'?><methodCall><methodName>system.listMethods</method
 | Field | Description | Example |
 |-------|-------------|---------|
 | **Name** | Descriptive name for this client | `rTorrent` |
-| **Host** | rTorrent IP or hostname | `localhost`, `192.168.1.100`, or `rtorrent` (Docker) |
-| **Port** | XML-RPC port | `5000` |
-| **Username** | Optional authentication | `admin` |
-| **Password** | Optional authentication | your password |
+| **Host** | ruTorrent/rTorrent IP or hostname | `localhost`, `192.168.1.100`, or `rtorrent` (Docker) |
+| **Port** | HTTP port of the ruTorrent web server (not the raw SCGI port) | `8080` |
+| **Username** | Optional HTTP basic auth | `admin` |
+| **Password** | Optional HTTP basic auth | your password |
 | **Use SSL** | Enable for HTTPS | Unchecked (unless configured) |
-| **URL Base** | For reverse proxy setups | `/RPC2` (optional) |
+| **URL Base** | Path prefix before `RPC2` - use this if ruTorrent is served from a subpath, or point it at the httprpc plugin's `action.php` | optional |
+
+Cinephage builds the request URL as `http(s)://host:port/RPC2` by default; if a URL base is set and ends in `rpc2` or `action.php` it is used as-is, otherwise `/RPC2` is appended to it.
 
 **Host Configuration Guide:**
 
@@ -88,12 +74,14 @@ curl -d "<?xml version='1.0'?><methodCall><methodName>system.listMethods</method
 - Separate machine: Use that machine's IP address
 - Docker container name: `rtorrent` (if on same network)
 
-### Advanced settings
+### Options
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| **Category** | rTorrent label/tag | `cinephage` |
-| **Priority** | Download priority | `Normal` |
+| **Movies category** | rTorrent label applied to movie downloads | `movies` |
+| **TV Shows category** | rTorrent label applied to TV downloads | `tv` |
+
+rTorrent does not have per-download priority levels in Cinephage the way qBittorrent, Deluge, SABnzbd and NZBGet do - there's no Recent/Older priority selector for this client.
 
 ## Step 3: Test and Save
 
@@ -102,12 +90,12 @@ curl -d "<?xml version='1.0'?><methodCall><methodName>system.listMethods</method
 
 If the test fails:
 
-- Verify XML-RPC is enabled in rTorrent (Step 1)
-- Check that the host and port are correct
-- Confirm rTorrent is running
-- Check firewall rules allow connections on port 5000
+- Verify the RPC2 endpoint is reachable over HTTP (Step 1)
+- Check that the host and port point at ruTorrent's web server, not rTorrent's raw SCGI port
+- Confirm rTorrent and ruTorrent are running
+- Check firewall rules allow connections on the configured port
 - If using Docker, verify containers can communicate
-- Test XML-RPC manually with curl (see Step 1)
+- Test the endpoint manually with curl (see Step 1)
 
 ## Testing Your Configuration
 
@@ -119,16 +107,16 @@ If the test fails:
 
 ## Common Issues
 
-### XML-RPC not enabled
+### RPC2 endpoint not accessible
 
 **Problem:** Connection refused or RPC not accessible.
 
 **Solutions:**
 
-- Ensure `scgi_port` or `scgi_local` is set in `.rtorrent.rc`
-- Restart rTorrent after editing configuration
+- Ensure `scgi_local` (or `scgi_port`) is set in `.rtorrent.rc` so ruTorrent can reach rTorrent
+- Confirm ruTorrent's web server is running and serving `/RPC2`
+- Restart rTorrent/ruTorrent after editing configuration
 - Verify the port is not blocked by a firewall
-- Check that rTorrent has permission to bind to the port
 
 ### Connection timeout
 
@@ -150,7 +138,7 @@ If the test fails:
 
 - Check path mappings if Cinephage and rTorrent use different paths
 - Verify Cinephage can access the download folder
-- Check Cinephage logs in **Settings > Logs**
+- Check Cinephage logs in **Settings > Monitoring > Logs**
 - Ensure the download directory has correct permissions
 
 ## rTorrent Configuration Tips

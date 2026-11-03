@@ -1,7 +1,7 @@
 ---
 title: Configure NZB streaming
 description: Stream content directly from usenet without downloading first using NZB streaming
-sidebar_position: 6
+sidebar_position: 3
 tags: [nzb, streaming, usenet, configuration, guide, strm]
 keywords: [nzb, streaming, usenet, nntp, strm, sabnzbd, altmount, nzbdav]
 ---
@@ -114,7 +114,7 @@ More connections improve streaming throughput. Stay within your provider's conne
 
 ### Step 2: Set up Streamer quality profile
 
-1. Go to **Settings > Profiles > Quality**
+1. Go to **Settings > Library > Quality Settings** (**Profiles** tab)
 2. Find the built-in **Streamer** profile or create a new one
 3. Set preferred qualities (1080p WEB-DL recommended as cutoff)
 4. Ensure **File Type** is set to `.strm`
@@ -292,5 +292,5 @@ Media servers that support `.strm` files work automatically once Cinephage's lib
 ## See Also
 
 - [Configure NNTP Servers](/reference/configuration/settings-explained#nntp-servers-usenet) - NNTP settings reference
-- [Configure Download Clients](download-clients) - SABnzbd setup (for mount mode path only)
-- [Quality Profiles](quality-profiles) - Configure the Streamer profile
+- [Configure Download Clients](../download-clients) - SABnzbd setup (for mount mode path only)
+- [Quality Profiles](../quality/quality-profiles) - Configure the Streamer profile

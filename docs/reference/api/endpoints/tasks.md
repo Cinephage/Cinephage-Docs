@@ -8,89 +8,89 @@ keywords: [api, tasks, monitoring, endpoints]
 
 # Tasks
 
-Endpoints for managing scheduled monitoring tasks in Cinephage. Tasks handle automated operations like searching for missing content, upgrades, and subtitle searches.
+Endpoints for managing scheduled monitoring/maintenance tasks in Cinephage. Tasks handle automated operations like searching for missing content, upgrades, and subtitle searches.
 
 ## Authentication
 
-All task endpoints require authentication via session cookie or API key.
+Only `POST /api/tasks/:taskId/run` calls `requireAdmin` directly in the route handler. The others have no such check in the handler itself - but none of these are actually reachable unauthenticated: a global gate in `hooks.server.ts` requires a valid session or API key on every `/api/*` route before it reaches any handler, and `/api/tasks/*` is not on the viewer read-only allowlist, so these are **admin-only** across the board, including the GET endpoints. See [API Authentication](/reference/api/authentication) for how that global gate works.
 
 | Endpoint | Auth Level |
 |----------|------------|
-| GET `/api/tasks` | requireAuth |
-| GET `/api/tasks/stream` | requireAuth |
-| POST `/api/tasks/:taskId/run` | requireAuth |
-| POST `/api/tasks/:taskId/cancel` | requireAuth |
-| PUT `/api/tasks/:taskId/enabled` | requireAuth |
-| PUT `/api/tasks/:taskId/interval` | requireAuth |
-| GET `/api/tasks/:taskId/history` | requireAuth |
-| GET `/api/tasks/history/:historyId/activity` | requireAuth |
+| GET `/api/tasks` | 🔐 Admin only |
+| GET `/api/tasks/stream` | 🔐 Admin only |
+| POST `/api/tasks/:taskId/run` | 🔐 Admin only |
+| POST `/api/tasks/:taskId/cancel` | 🔐 Admin only |
+| PUT `/api/tasks/:taskId/enabled` | 🔐 Admin only |
+| PUT `/api/tasks/:taskId/interval` | 🔐 Admin only |
+| GET `/api/tasks/:taskId/history` | 🔐 Admin only |
+| GET `/api/tasks/history/:historyId/activity` | 🔐 Admin only |
 
 ---
 
 ## List tasks
 
-Returns all available monitoring tasks.
+Returns all registered tasks (both scheduled and maintenance) with their current runtime status.
 
 ```
 GET /api/tasks
 ```
-
-### Request parameters
-
-None required.
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
 | 200 | Success |
-| 401 | Authentication required |
 
 ### Response schema
 
 ```json
 {
+  "success": true,
   "tasks": [
     {
       "id": "string",
       "name": "string",
       "description": "string",
-      "type": "monitoring | subtitle | system",
-      "enabled": "boolean",
-      "interval": "integer",
-      "intervalUnit": "minutes | hours | days",
-      "defaultInterval": "integer",
-      "lastRunAt": "string",
-      "nextRunAt": "string",
-      "status": "idle | running | queued | error",
-      "supportsCancel": "boolean",
-      "supportsHistory": "boolean"
+      "category": "scheduled | maintenance",
+      "runEndpoint": "string",
+      "intervalKey": "string | undefined",
+      "defaultIntervalHours": "number | undefined",
+      "minIntervalHours": "number | undefined",
+      "intervalEditable": "boolean | undefined",
+      "lastRunTime": "string | null",
+      "nextRunTime": "string | null",
+      "intervalHours": "number | null",
+      "isRunning": "boolean",
+      "enabled": "boolean"
     }
   ]
 }
 ```
 
-### Task types
-
-| Type | Description |
-|------|-------------|
-| `monitoring` | Content monitoring tasks (search, upgrade) |
-| `subtitle` | Subtitle-related tasks |
-| `system` | System maintenance tasks |
+`nextRunTime` and `intervalHours` are always `null` for `maintenance` category tasks (they have no automatic schedule). There is no `type`, `interval`/`intervalUnit`, `status`, `supportsCancel`, or `supportsHistory` field.
 
 ### Built-in tasks
 
-| Task | Type | Description |
-|------|------|-------------|
-| `CutoffUnmet` | monitoring | Search for items below quality cutoff |
-| `Upgrade` | monitoring | Search for quality upgrades |
-| `MissingEpisodes` | monitoring | Search for missing TV episodes |
-| `NewEpisodes` | monitoring | Detect new episodes |
-| `PendingReleases` | monitoring | Monitor pending releases |
-| `MissingSubtitles` | subtitle | Search for missing subtitles |
-| `SubtitleUpgrade` | subtitle | Search for better subtitles |
-| `SubtitleSearchOnImport` | subtitle | Search subtitles on media import |
-| `HistoryCleanup` | system | Clean up old history entries (30 days) |
+Task IDs are lower/camelCase strings, not `PascalCase` and not prefixed with `task_`:
+
+| Task ID | Category | Description |
+|---------|----------|-------------|
+| `missing` | scheduled | Search for missing movies/episodes |
+| `upgrade` | scheduled | Search for quality upgrades |
+| `newEpisode` | scheduled | Detect and search for new episodes |
+| `cutoffUnmet` | scheduled | Search for items below quality cutoff |
+| `pendingRelease` | scheduled | Monitor pending releases |
+| `smartListRefresh` | scheduled | Refresh smart list contents |
+| `missingSubtitles` | scheduled | Search for missing subtitles |
+| `subtitleUpgrade` | scheduled | Search for better subtitles |
+| `library-reconcile` | scheduled | Reconcile library state |
+| `historyCleanup` | scheduled | Clean up old history entries |
+| `dbBackup` | scheduled | Back up the database |
+| `library-scan` | maintenance | Scan root folders for media |
+| `update-strm-urls` | maintenance | Update `.strm` file URLs |
+| `reprobe-strm-media-info` | maintenance | Re-probe media info for `.strm` files |
+| `metadata-refresh` | maintenance | Refresh metadata from providers |
+| `regenerate-sidecars` | maintenance | Regenerate NFO/artwork sidecar files |
 
 ### Example request
 
@@ -99,48 +99,9 @@ curl -H "x-api-key: cinephage_your_key_here" \
   "http://localhost:3000/api/tasks"
 ```
 
-### Example response
-
-```json
-{
-  "tasks": [
-    {
-      "id": "task_missing_subtitles",
-      "name": "Missing Subtitles",
-      "description": "Search for missing subtitles on media items",
-      "type": "subtitle",
-      "enabled": true,
-      "interval": 360,
-      "intervalUnit": "minutes",
-      "defaultInterval": 360,
-      "lastRunAt": "2024-06-20T10:00:00Z",
-      "nextRunAt": "2024-06-20T16:00:00Z",
-      "status": "idle",
-      "supportsCancel": true,
-      "supportsHistory": true
-    },
-    {
-      "id": "task_upgrade",
-      "name": "Quality Upgrade",
-      "description": "Search for better quality releases",
-      "type": "monitoring",
-      "enabled": true,
-      "interval": 10080,
-      "intervalUnit": "minutes",
-      "defaultInterval": 10080,
-      "lastRunAt": "2024-06-19T02:00:00Z",
-      "nextRunAt": "2024-06-26T02:00:00Z",
-      "status": "idle",
-      "supportsCancel": true,
-      "supportsHistory": true
-    }
-  ]
-}
-```
-
 ---
 
-## Task Events Stream
+## Task events stream
 
 Real-time SSE stream for task status updates.
 
@@ -148,75 +109,73 @@ Real-time SSE stream for task status updates.
 GET /api/tasks/stream
 ```
 
-### Response
-
-Server-Sent Events stream with task status changes.
-
 ### Event types
 
-| Event | Description |
-|-------|-------------|
-| `task:started` | Task execution started |
-| `task:progress` | Task progress update |
-| `task:completed` | Task execution completed |
-| `task:error` | Task execution failed |
-| `task:cancelled` | Task was cancelled |
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `task:started` | `{ taskId, startedAt }` | Task execution started (scheduled or manual) |
+| `task:completed` | `{ taskId, completedAt, lastRunTime, nextRunTime, result?, historyEntry? }` | Task finished successfully |
+| `task:failed` | `{ taskId, completedAt, error, historyEntry? }` | Task failed |
+| `task:cancelled` | `{ taskId, cancelledAt }` | A running task was cancelled |
+| `task:updated` | `{ taskId, enabled?, intervalHours?, nextRunTime? }` | Task settings changed (enable/disable, interval) |
+
+There is no `task:progress` or `task:error` event - use `task:failed` instead of `task:error`.
 
 ### Example event
 
 ```
 event: task:started
-data: {"taskId":"task_upgrade","timestamp":"2024-06-20T10:00:00Z"}
+data: {"taskId":"upgrade","startedAt":"2024-06-20T10:00:00.000Z"}
 ```
 
 ---
 
 ## Run task
 
-Triggers immediate execution of a task.
+Triggers immediate execution of a task and tracks it in history.
 
 ```
 POST /api/tasks/:taskId/run
 ```
 
-### Request parameters
+### Path parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| taskId | string | Yes | Task identifier |
+| taskId | string | Yes | Task identifier (see [Built-in tasks](#built-in-tasks)) |
 
-### Request body schema
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| force | boolean | No | Force run even if already running |
-| options | object | No | Task-specific options |
+This endpoint takes no request body fields of its own (a streaming API key is looked up and forwarded automatically for `update-strm-urls`).
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
-| 200 | Task started or already running |
+| 200 | Task ran (check `success` in the body for the task's own result) |
+| 400 | Media Streaming API Key not found (for `update-strm-urls`) |
 | 401 | Authentication required |
+| 403 | Admin role required |
 | 404 | Task not found |
+| 409 | Task is already running |
+| 500 | Failed to start or execute the task |
+
+### Response schema
+
+```json
+{
+  "success": "boolean",
+  "historyId": "string",
+  "error": "string | undefined"
+}
+```
+
+The task endpoint's own response fields are spread alongside `success`/`historyId`.
 
 ### Example request
 
 ```bash
 curl -X POST \
   -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/tasks/task_upgrade/run"
-```
-
-### Example response
-
-```json
-{
-  "success": true,
-  "taskId": "task_upgrade",
-  "executionId": "exec_abc123",
-  "message": "Task queued for execution"
-}
+  "http://localhost:3000/api/tasks/upgrade/run"
 ```
 
 ---
@@ -229,7 +188,7 @@ Cancels a running task.
 POST /api/tasks/:taskId/cancel
 ```
 
-### Request parameters
+### Path parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -240,26 +199,22 @@ POST /api/tasks/:taskId/cancel
 | Code | Description |
 |------|-------------|
 | 200 | Cancellation successful |
-| 400 | Task not running or doesn't support cancellation |
-| 401 | Authentication required |
+| 400 | Task is not running |
 | 404 | Task not found |
+| 500 | Failed to cancel task |
+
+### Response schema
+
+```json
+{ "success": true, "message": "Task 'upgrade' cancelled" }
+```
 
 ### Example request
 
 ```bash
 curl -X POST \
   -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/tasks/task_upgrade/cancel"
-```
-
-### Example response
-
-```json
-{
-  "success": true,
-  "taskId": "task_upgrade",
-  "message": "Task cancellation requested"
-}
+  "http://localhost:3000/api/tasks/upgrade/cancel"
 ```
 
 ---
@@ -276,15 +231,21 @@ PUT /api/tasks/:taskId/enabled
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| enabled | boolean | Yes | Enable or disable task |
+| enabled | boolean | Yes | Enable or disable the task |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
 | 200 | Task updated |
-| 401 | Authentication required |
+| 400 | Invalid body |
 | 404 | Task not found |
+
+### Response schema
+
+```json
+{ "success": true, "taskId": "missingSubtitles", "enabled": false }
+```
 
 ### Example request
 
@@ -293,14 +254,14 @@ curl -X PUT \
   -H "Content-Type: application/json" \
   -H "x-api-key: cinephage_your_key_here" \
   -d '{"enabled": false}' \
-  "http://localhost:3000/api/tasks/task_missing_subtitles/enabled"
+  "http://localhost:3000/api/tasks/missingSubtitles/enabled"
 ```
 
 ---
 
 ## Update task interval
 
-Changes the execution interval for a task.
+Changes the execution interval for a scheduled task, in hours (not minutes/hours/days units).
 
 ```
 PUT /api/tasks/:taskId/interval
@@ -310,17 +271,21 @@ PUT /api/tasks/:taskId/interval
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| interval | integer | Yes | New interval value |
-| unit | string | Yes | Unit: `minutes`, `hours`, or `days` |
+| intervalHours | number | Yes | New interval in hours; must be positive and at least the task's `minIntervalHours` |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
 | 200 | Interval updated |
-| 400 | Invalid interval or unit |
-| 401 | Authentication required |
+| 400 | Invalid interval, task is not a scheduled task, or its interval is not editable |
 | 404 | Task not found |
+
+### Response schema
+
+```json
+{ "success": true, "taskId": "missingSubtitles", "intervalHours": 12 }
+```
 
 ### Example request
 
@@ -328,68 +293,41 @@ PUT /api/tasks/:taskId/interval
 curl -X PUT \
   -H "Content-Type: application/json" \
   -H "x-api-key: cinephage_your_key_here" \
-  -d '{"interval": 720, "unit": "minutes"}' \
-  "http://localhost:3000/api/tasks/task_missing_subtitles/interval"
-```
-
-### Example response
-
-```json
-{
-  "success": true,
-  "taskId": "task_missing_subtitles",
-  "interval": 720,
-  "intervalUnit": "minutes",
-  "nextRunAt": "2024-06-20T22:00:00Z"
-}
+  -d '{"intervalHours": 12}' \
+  "http://localhost:3000/api/tasks/missingSubtitles/interval"
 ```
 
 ---
 
 ## Get task history
 
-Returns execution history for a task.
+Returns paginated execution history for a task.
 
 ```
 GET /api/tasks/:taskId/history
 ```
 
-### Request parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| taskId | string | Yes | Task identifier |
-
 ### Query parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| page | integer | No | Page number (default: 1) |
-| limit | integer | No | Items per page (default: 20) |
-| status | string | No | Filter by status: `completed`, `failed`, `cancelled` |
+| limit | integer | No | Entries to return, max 100 (default: 10) |
+| offset | integer | No | Entries to skip (default: 0) |
+
+There is no `page` parameter or `status` filter, and the default `limit` is 10, not 20.
 
 ### Response schema
 
 ```json
 {
-  "history": [
-    {
-      "id": "string",
-      "taskId": "string",
-      "startedAt": "string",
-      "completedAt": "string",
-      "duration": "integer",
-      "status": "completed | failed | cancelled",
-      "itemsProcessed": "integer",
-      "itemsAffected": "integer",
-      "error": "string"
-    }
-  ],
+  "success": true,
+  "taskId": "string",
+  "history": ["array of task history entries"],
   "pagination": {
-    "page": "integer",
     "limit": "integer",
+    "offset": "integer",
     "total": "integer",
-    "totalPages": "integer"
+    "hasMore": "boolean"
   }
 }
 ```
@@ -398,54 +336,61 @@ GET /api/tasks/:taskId/history
 
 ```bash
 curl -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/tasks/task_missing_subtitles/history?limit=10"
+  "http://localhost:3000/api/tasks/missingSubtitles/history?limit=10"
 ```
 
 ---
 
 ## Get task history activity
 
-Returns detailed per-item activity for a task execution.
+Returns detailed per-item activity (from the monitoring history table) for a task execution.
 
 ```
 GET /api/tasks/history/:historyId/activity
 ```
 
-### Request parameters
+### Path parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| historyId | string | Yes | History entry identifier |
+| historyId | string | Yes | Task history entry ID (from [Get task history](#get-task-history)) |
 
-### Query parameters
+There is no pagination on this endpoint - it returns all activity entries for the run.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| page | integer | No | Page number (default: 1) |
-| limit | integer | No | Items per page (default: 50) |
+### Response codes
+
+| Code | Description |
+|------|-------------|
+| 200 | Success |
+| 400 | Missing `historyId` |
+| 500 | Failed to fetch activity |
 
 ### Response schema
 
 ```json
 {
+  "success": true,
+  "total": "integer",
   "activity": [
     {
       "id": "string",
-      "historyId": "string",
-      "mediaId": "string",
-      "mediaTitle": "string",
-      "action": "string",
+      "taskType": "string",
       "status": "string",
-      "message": "string",
-      "timestamp": "string"
+      "releasesFound": "integer",
+      "releaseGrabbed": "string | null",
+      "isUpgrade": "boolean",
+      "oldScore": "number | null",
+      "newScore": "number | null",
+      "errorMessage": "string | null",
+      "executedAt": "string",
+      "mediaType": "movie | episode | unknown",
+      "mediaTitle": "string",
+      "mediaId": "string | null",
+      "seasonNumber": "integer | null",
+      "episodeNumber": "integer | null",
+      "seriesTitle": "string | null"
     }
-  ],
-  "pagination": {
-    "page": "integer",
-    "limit": "integer",
-    "total": "integer",
-    "totalPages": "integer"
-  }
+  ]
 }
 ```
 
@@ -453,11 +398,11 @@ GET /api/tasks/history/:historyId/activity
 
 ```bash
 curl -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/tasks/history/exec_abc123/activity?limit=50"
+  "http://localhost:3000/api/tasks/history/<historyId>/activity"
 ```
 
 ## See Also
 
-- [Monitoring](/guides/configure/settings-system) - Task configuration in settings
+- [Monitoring](/guides/configure/system/settings-system) - Task configuration in settings
 - [Search and Download](/guides/use/search-and-download) - Manual search operations
-- [Subtitles](/guides/configure/subtitles) - Subtitle task configuration
+- [Subtitles](/guides/configure/languages/subtitles) - Subtitle task configuration

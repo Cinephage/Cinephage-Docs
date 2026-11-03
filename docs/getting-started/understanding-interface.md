@@ -18,10 +18,11 @@ The dashboard is your home screen when logging in. It provides:
 
 At the top:
 
-- **Movies** - Total movies in library
-- **TV Shows** - Total series in library
-- **Monitored** - Items actively being monitored
-- **Missing** - Monitored items not yet downloaded
+- **Movies** - Total movies, with counts for files on disk, missing, in theaters, and unreleased
+- **TV Shows** - Total series, with counts for episode files on disk, missing, and unaired
+- **Downloads** - Active, queued, stalled, and paused downloads
+- **Missing Episodes** - Monitored episodes that have aired but have not been downloaded
+- **Unmatched** - Files on disk that need attention
 
 ### Recent Activity
 
@@ -41,11 +42,15 @@ Upcoming releases for monitored content:
 
 ### Quick Actions
 
-Buttons for common tasks:
+Buttons for common tasks (shown once your library has content and clients/indexers are configured):
 
-- Search all missing
-- Scan library
-- View activity queue
+- Discover
+- Import
+- View Activity
+- Indexers
+- Search Missing (shown when monitored episodes are missing) or Tasks
+
+Before any indexers, download clients, or root folders are configured, this area instead shows setup prompts to add them.
 
 ## Main Navigation
 
@@ -57,8 +62,8 @@ Browse and search TMDB for new content:
 
 - **Movies** tab - Browse movie database
 - **TV** tab - Browse TV shows database
-- **People** tab - Browse actors and directors
 - Filters for genre, year, rating, and more
+- Click cast or crew on a title's detail page to view their filmography
 
 ### Library
 
@@ -68,6 +73,17 @@ Manage your media collection:
 - **TV** - Series list with season details
 - **Unmatched** - Files awaiting manual matching
 - **Import** - Manual import interface
+
+### Activity
+
+Monitor operations:
+
+- **Queue** - Active downloads
+- **History** - Completed operations
+
+### Calendar
+
+Upcoming release dates for monitored movies and TV episodes.
 
 ### Live TV
 
@@ -84,14 +100,6 @@ Dynamic content lists:
 - View existing lists
 - Create new lists from TMDB queries
 - Auto-add items to library
-
-### Activity
-
-Monitor operations:
-
-- **Queue** - Active downloads
-- **History** - Completed operations
-- **Blocklist** - Failed releases to avoid
 
 ## Movie Library
 
@@ -187,146 +195,48 @@ Click a series for:
 
 ## Settings Organization
 
-Navigate to **Settings** for configuration:
+The **Settings** sidebar item expands into five sections: Library & Storage, Integrations, System, Blocklist, and Monitoring.
 
-### General
+### Library & Storage
 
-Basic application settings:
+- **Libraries** - Manage your movie and TV libraries
+- **Root Folders** - Define where media is stored on disk
+- **File Management** - Import and file-handling behavior
+- **Naming** - Movie and series naming patterns, available tokens, and a rename preview
+- **Quality Settings** - Quality **Profiles** (view built-in profiles, create custom ones, configure upgrade behavior and cutoffs) and **Custom Formats** (scoring rules tested against release names) as two tabs on the same page
+- **Discovery Filters** - Global TMDB filters (minimum rating, excluded genres, certification limits)
 
-- Application name and theme
-- Date/time formats
-- Language preferences
-- TMDB API key
+### Integrations
 
-### Filters
-
-Global TMDB filters:
-
-- Minimum rating
-- Exclude genres
-- Certification limits (PG-13, R, etc.)
-
-### Profiles
-
-Quality profile management:
-
-- View built-in profiles
-- Create custom profiles
-- Configure upgrade behavior
-- Set cutoff qualities
-
-### Quality
-
-Custom formats:
-
-- Create format rules
-- Define scoring criteria
-- Test against release names
-
-### Naming
-
-File organization:
-
-- Movie naming patterns
-- Series naming patterns
-- Available tokens preview
-- Rename preview
-
-### Tasks
-
-Background task configuration:
-
-- Monitoring tasks (missing, upgrades)
-- Subtitle tasks
-- Smart list tasks
-- Schedule intervals
-
-### Logs
-
-Application logs:
-
-- Real-time log viewer
-- Filter by level (debug, info, error)
-- Search log entries
-
-### Streaming
-
-Streaming configuration:
-
-- Provider settings
-- Circuit breaker options
-- Cache settings
+- **Indexers** - Add, test, and prioritize indexers
+- **Download Clients** - Configure qBittorrent, SABnzbd, and others; test connections, category labels, and path mappings
+- **NNTP Servers** - Usenet server configuration, connection limits, SSL
+- **Subtitle Providers** - Enable providers, configure API keys, set priorities
+- **Language Profiles** - Subtitle language preferences, cutoff languages, upgrade behavior
+- **Media Servers** - Jellyfin/Emby/Plex connections, notification triggers, connection tests
+- **Streaming** - Streaming provider settings, circuit breaker options, cache settings
 
 ### System
 
-System-level settings:
+- **General** - Application name/theme, date/time and language preferences, TMDB API key, external URL, and API key management (Main and Streaming keys)
+- **Metadata Providers** - TMDB configuration plus optional AniList/MyAnimeList enrichment for anime titles
+- **Captcha Solver** - Cloudflare bypass settings, Camoufox configuration, timeout values
+- **Backup & Restore** - Create and restore configuration backups
+- **Cinephage** - Version info, update checking, and auto-update settings
 
-- Backup and restore
-- API key management
-- Update checking
-- External URL configuration
+### Blocklist
 
-## Integrations Section
+- **Releases** - Blocked releases and reasons for the block
+- **Blocked Media** - Movies/shows excluded from search
+- **Blocked Keywords** - Release names containing these keywords are skipped
+- **Blocked Extensions** - File extensions excluded from import
 
-**Settings > Integrations** contains:
+### Monitoring
 
-### Indexers
-
-Add and manage indexers:
-
-- View configured indexers
-- Add new indexers
-- Test connections
-- Set priorities
-
-### Download Clients
-
-Configure Download Clients:
-
-- Add qBittorrent, SABnzbd, etc.
-- Test connections
-- Set category labels
-- Configure path mappings
-
-### Subtitle Providers
-
-Manage subtitle sources:
-
-- Enable/disable providers
-- Configure API keys
-- Set provider priorities
-
-### Language Profiles
-
-Subtitle language preferences:
-
-- Create language profiles
-- Set cutoff languages
-- Configure upgrade behavior
-
-### NNTP Servers
-
-Usenet server configuration:
-
-- Add NNTP servers
-- Set connection limits
-- Configure SSL
-
-### Media Servers
-
-Jellyfin/Emby integration:
-
-- Configure server connections
-- Set notification triggers
-- Test connections
-
-### Captcha Solver
-
-Cloudflare bypass settings:
-
-- Enable/disable solver
-- Configure Camoufox
-- Set timeout values
+- **Storage Maintenance** - Library and folder health status
+- **Tasks** - Background task configuration (missing/upgrade monitoring, subtitle tasks, smart list tasks, schedule intervals)
+- **Logs** - Real-time log viewer, filter by level, search log entries
+- **Reports** - Summary reports on library and monitoring activity
 
 ## Activity Section
 
@@ -357,25 +267,11 @@ Completed operations:
 - Upgrades applied
 - Filter by type and status
 
-### Blocklist
-
-Prevent re-downloading:
-
-- View blocked releases
-- See reason for block
-- Remove from blocklist if needed
+The Activity page has **Queue** and **History** tabs. To manage blocked releases, see **Settings > Blocklist** above.
 
 ## Search Interface
 
 Multiple places to search:
-
-### Global Search
-
-Top navigation bar:
-
-- Search across movies and TV
-- Quick results dropdown
-- Keyboard shortcut: `/`
 
 ### Discover Search
 
@@ -401,16 +297,6 @@ On movie/series details:
 - Compare scores
 - Grab specific releases
 
-## Keyboard Shortcuts
-
-Efficient navigation:
-
-- `/` - Focus search bar
-- `Esc` - Close modals/clear search
-- `g` then `d` - Go to Discover
-- `g` then `l` - Go to Library
-- `g` then `a` - Go to Activity
-
 ## Mobile Interface
 
 Cinephage is responsive:
@@ -430,7 +316,6 @@ You now understand:
 - Settings hierarchy
 - Activity monitoring
 - Search capabilities
-- Keyboard shortcuts
 
 ## Next Steps
 
@@ -445,7 +330,7 @@ You have completed the Getting Started tutorials. You are ready to:
 ### Essential Configuration
 - [Configure Download Clients](../guides/configure/download-clients) - Set up qBittorrent, SABnzbd, and others
 - [Configure Indexers](../guides/configure/indexers) - Add indexers
-- [Set Up Quality Profiles](../guides/configure/quality-profiles) - Configure quality scoring
+- [Set Up Quality Profiles](../guides/configure/quality/quality-profiles) - Configure quality scoring
 
 ### Daily Operations
 - [Search and Download](../guides/use/search-and-download) - Find and acquire content

@@ -12,52 +12,30 @@ Endpoints for managing movies in the Cinephage library.
 
 ## Authentication
 
-All movie endpoints require authentication via session cookie or API key.
+Only the collection-level list/create endpoints call `requireAuth` directly in the route handler. The `:id` sub-resource endpoints (get, update, delete, auto-search, refresh) and the `batch`/`bulk` endpoints have no such check in the handler itself - but none of these are actually reachable unauthenticated: a global gate in `hooks.server.ts` requires a valid session or API key on every `/api/*` route before it reaches any handler, and a GET to `/api/library/movies/*` is allowed for viewer-role sessions while every write (PATCH/PUT/DELETE/POST) falls through to admin-only. See [API Authentication](/reference/api/authentication) for how that global gate works.
 
 | Endpoint | Auth Level |
 |----------|------------|
-| GET `/api/library/movies` | requireAuth |
-| POST `/api/library/movies` | requireAuth |
-| GET `/api/library/movies/:id` | requireAuth |
-| PUT `/api/library/movies/:id` | requireAuth |
-| DELETE `/api/library/movies/:id` | requireAuth |
-| POST `/api/library/movies/:id/auto-search` | requireAuth |
-| POST `/api/library/movies/:id/refresh` | requireAuth |
-| PUT `/api/library/movies/bulk` | requireAuth |
+| GET `/api/library/movies` | 🔐 Any session/key (viewer or admin) |
+| POST `/api/library/movies` | 🔐 Admin only |
+| GET `/api/library/movies/:id` | 🔐 Any session/key (viewer or admin) |
+| PATCH / PUT `/api/library/movies/:id` | 🔐 Admin only |
+| DELETE `/api/library/movies/:id` | 🔐 Admin only |
+| POST `/api/library/movies/:id/auto-search` | 🔐 Admin only |
+| POST `/api/library/movies/:id/refresh` | 🔐 Admin only |
+| POST `/api/library/movies/bulk` | 🔐 Admin only |
+| PATCH / PUT `/api/library/movies/batch` | 🔐 Admin only |
+| DELETE `/api/library/movies/batch` | 🔐 Admin only |
 
 ---
 
 ## List movies
 
-Returns a paginated list of movies with filtering and sorting options.
+Returns **all** movies in the library. There is no pagination, sorting, or filtering support on this endpoint - it always returns the full list.
 
 ```
 GET /api/library/movies
 ```
-
-### Request parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| page | integer | No | Page number (default: 1) |
-| limit | integer | No | Items per page (default: 20, max: 100) |
-| sort | string | No | Sort field and direction (e.g., `createdAt:desc`) |
-| monitored | boolean | No | Filter by monitored status |
-| downloaded | boolean | No | Filter by download status |
-| search | string | No | Search query for title |
-| genre | string | No | Filter by genre |
-| year | integer | No | Filter by release year |
-
-### Sort options
-
-| Field | Description |
-|-------|-------------|
-| `title` | Movie title |
-| `year` | Release year |
-| `createdAt` | Date added to library |
-| `updatedAt` | Last update date |
-| `tmdbRating` | TMDB rating score |
-| `lastSearchTime` | Last search timestamp |
 
 ### Response codes
 
@@ -65,117 +43,67 @@ GET /api/library/movies
 |------|-------------|
 | 200 | Success |
 | 401 | Authentication required |
-| 429 | Rate limit exceeded |
+| 500 | Failed to fetch movies |
 
 ### Response schema
 
 ```json
 {
+  "success": true,
+  "total": "integer",
   "movies": [
     {
       "id": "string",
-      "title": "string",
-      "originalTitle": "string",
-      "year": "integer",
       "tmdbId": "integer",
-      "imdbId": "string",
-      "overview": "string",
-      "runtime": "integer",
+      "imdbId": "string | null",
+      "title": "string",
+      "originalTitle": "string | null",
+      "year": "integer | null",
+      "overview": "string | null",
+      "posterPath": "string | null",
+      "backdropPath": "string | null",
+      "runtime": "integer | null",
       "genres": ["string"],
-      "certification": "string",
-      "tmdbRating": "number",
-      "tmdbVoteCount": "integer",
-      "posterUrl": "string",
-      "backdropUrl": "string",
+      "path": "string | null",
+      "rootFolderId": "string | null",
+      "rootFolderPath": "string | null",
+      "scoringProfileId": "string | null",
+      "desiredQualities": ["2160p | 1080p | 720p | 480p"] ,
       "monitored": "boolean",
-      "downloaded": "boolean",
-      "hasFile": "boolean",
-      "fileId": "string",
-      "file": {
-        "id": "string",
-        "path": "string",
-        "size": "integer",
-        "quality": "string",
-        "qualityScore": "integer",
-        "releaseTitle": "string",
-        "dateAdded": "string"
-      },
-      "createdAt": "string",
-      "updatedAt": "string",
-      "addedAt": "string",
       "minimumAvailability": "string",
-      "rootFolderPath": "string",
-      "searchOnAdd": "boolean",
-      "lastSearchTime": "string",
-      "titleSlug": "string"
+      "added": "string",
+      "hasFile": "boolean",
+      "tmdbCollectionId": "integer | null",
+      "collectionName": "string | null",
+      "releaseDate": "string | null",
+      "digitalReleaseDate": "string | null",
+      "physicalReleaseDate": "string | null",
+      "availabilityDelay": "integer",
+      "missingRootFolder": "boolean",
+      "files": [
+        {
+          "id": "string",
+          "relativePath": "string",
+          "size": "integer",
+          "dateAdded": "string",
+          "quality": "object",
+          "mediaInfo": "object",
+          "releaseGroup": "string | null",
+          "edition": "string | null"
+        }
+      ]
     }
-  ],
-  "pagination": {
-    "page": "integer",
-    "limit": "integer",
-    "total": "integer",
-    "totalPages": "integer"
-  }
+  ]
 }
 ```
+
+`posterPath`/`backdropPath` are TMDB-relative paths (e.g. `/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg`), not full URLs. There is no `tmdbRating`, `certification`, `titleSlug`, or `qualityScore` field on movie rows.
 
 ### Example request
 
 ```bash
 curl -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/library/movies?page=1&limit=10&sort=createdAt:desc&monitored=true"
-```
-
-### Example response
-
-```json
-{
-  "movies": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "title": "Inception",
-      "originalTitle": "Inception",
-      "year": 2010,
-      "tmdbId": 27205,
-      "imdbId": "tt1375666",
-      "overview": "A thief who steals corporate secrets through the use of dream-sharing technology...",
-      "runtime": 148,
-      "genres": ["Action", "Science Fiction", "Adventure"],
-      "certification": "PG-13",
-      "tmdbRating": 8.4,
-      "tmdbVoteCount": 34512,
-      "posterUrl": "https://image.tmdb.org/t/p/original/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg",
-      "backdropUrl": "https://image.tmdb.org/t/p/original/s3TBrRGB1iav7gFOCNx3H31MoES.jpg",
-      "monitored": true,
-      "downloaded": true,
-      "hasFile": true,
-      "fileId": "660e8400-e29b-41d4-a716-446655440001",
-      "file": {
-        "id": "660e8400-e29b-41d4-a716-446655440001",
-        "path": "/movies/Inception (2010)/Inception.2010.1080p.BluRay.x264.mkv",
-        "size": 10485760000,
-        "quality": "Bluray-1080p",
-        "qualityScore": 100,
-        "releaseTitle": "Inception.2010.1080p.BluRay.x264-Group",
-        "dateAdded": "2024-01-15T10:30:00Z"
-      },
-      "createdAt": "2024-01-15T10:30:00Z",
-      "updatedAt": "2024-01-15T11:45:00Z",
-      "addedAt": "2024-01-15T10:30:00Z",
-      "minimumAvailability": "released",
-      "rootFolderPath": "/movies",
-      "searchOnAdd": true,
-      "lastSearchTime": "2024-01-15T10:35:00Z",
-      "titleSlug": "inception"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 1,
-    "totalPages": 1
-  }
-}
+  "http://localhost:3000/api/library/movies"
 ```
 
 ---
@@ -193,37 +121,40 @@ POST /api/library/movies
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | tmdbId | integer | Yes | TMDB movie ID |
-| rootFolderPath | string | Yes | Path to root folder |
+| rootFolderId | string | Yes | Root folder ID (not a path) |
+| scoringProfileId | string | No | Scoring/quality profile ID |
+| desiredQualities | string[] | No | `2160p`/`1080p`/`720p`/`480p` for multi-quality mode |
 | monitored | boolean | No | Whether to monitor for releases (default: true) |
-| minimumAvailability | string | No | Minimum availability (released, inCinemas, announced) |
-| searchOnAdd | boolean | No | Search immediately after adding (default: false) |
-| qualityProfileId | string | No | Quality profile ID |
-
-### Minimum availability values
-
-| Value | Description |
-|-------|-------------|
-| `announced` | When announced on TMDB |
-| `inCinemas` | When released in theaters |
-| `released` | When released physically or digitally |
+| minimumAvailability | string | No | `announced`, `inCinemas`, or `released` (default: `released`) |
+| availabilityDelay | integer | No | Days to delay availability, 0-365 (default: 0) |
+| searchOnAdd | boolean | No | Search immediately after adding (default: true) |
+| wantsSubtitles | boolean | No | Enable subtitle monitoring (default: true) |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
-| 201 | Created successfully |
+| 200 | Created successfully |
 | 400 | Invalid request body |
-| 401 | Authentication required |
 | 404 | TMDB movie not found |
-| 409 | Movie already in library |
+| 409 | Movie already exists in library, or a stale library configuration conflict |
+| 500 | Failed to add movie |
 
 ### Response schema
 
 ```json
 {
-  "success": "boolean",
-  "id": "string",
-  "message": "string"
+  "success": true,
+  "movie": {
+    "id": "string",
+    "tmdbId": "integer",
+    "title": "string",
+    "year": "integer | null",
+    "path": "string",
+    "monitored": "boolean",
+    "searchTriggered": "boolean",
+    "searchWarning": "string | undefined"
+  }
 }
 ```
 
@@ -235,28 +166,18 @@ curl -X POST \
   -H "x-api-key: cinephage_your_key_here" \
   -d '{
     "tmdbId": 27205,
-    "rootFolderPath": "/movies",
+    "rootFolderId": "rf_abc123",
     "monitored": true,
     "searchOnAdd": true
   }' \
   http://localhost:3000/api/library/movies
 ```
 
-### Example response
-
-```json
-{
-  "success": true,
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "message": "Movie added to library"
-}
-```
-
 ---
 
 ## Get movie
 
-Returns detailed information for a specific movie.
+Returns detailed information for a specific movie, including files, subtitles, and subtitle status.
 
 ```
 GET /api/library/movies/:id
@@ -273,162 +194,124 @@ GET /api/library/movies/:id
 | Code | Description |
 |------|-------------|
 | 200 | Success |
-| 401 | Authentication required |
 | 404 | Movie not found |
+| 500 | Failed to fetch movie |
 
 ### Response schema
 
 ```json
 {
-  "id": "string",
-  "title": "string",
-  "originalTitle": "string",
-  "year": "integer",
-  "tmdbId": "integer",
-  "imdbId": "string",
-  "overview": "string",
-  "tagline": "string",
-  "runtime": "integer",
-  "genres": ["string"],
-  "certification": "string",
-  "tmdbRating": "number",
-  "tmdbVoteCount": "integer",
-  "posterUrl": "string",
-  "backdropUrl": "string",
-  "website": "string",
-  "isAvailable": "boolean",
-  "monitored": "boolean",
-  "downloaded": "boolean",
-  "hasFile": "boolean",
-  "fileId": "string",
-  "file": {
+  "success": true,
+  "movie": {
     "id": "string",
-    "path": "string",
-    "size": "integer",
-    "quality": "string",
-    "qualityScore": "integer",
-    "releaseTitle": "string",
-    "releaseGroup": "string",
-    "edition": "string",
-    "languages": ["string"],
-    "mediaInfo": {
-      "videoCodec": "string",
-      "audioCodec": "string",
-      "audioChannels": "number",
-      "resolution": "string"
-    },
-    "dateAdded": "string"
-  },
-  "createdAt": "string",
-  "updatedAt": "string",
-  "addedAt": "string",
-  "minimumAvailability": "string",
-  "rootFolderPath": "string",
-  "searchOnAdd": "boolean",
-  "lastSearchTime": "string",
-  "titleSlug": "string",
-  "alternativeTitles": ["string"],
-  "credits": {
-    "cast": [
-      {
-        "name": "string",
-        "character": "string",
-        "tmdbId": "integer"
-      }
-    ],
-    "crew": [
-      {
-        "name": "string",
-        "job": "string",
-        "tmdbId": "integer"
-      }
-    ]
-  },
-  "images": [
-    {
-      "url": "string",
-      "type": "string"
-    }
-  ]
+    "tmdbId": "integer",
+    "imdbId": "string | null",
+    "providerRefs": "object",
+    "title": "string",
+    "originalTitle": "string | null",
+    "year": "integer | null",
+    "overview": "string | null",
+    "posterPath": "string | null",
+    "backdropPath": "string | null",
+    "runtime": "integer | null",
+    "genres": ["string"],
+    "path": "string | null",
+    "rootFolderId": "string | null",
+    "rootFolderPath": "string | null",
+    "scoringProfileId": "string | null",
+    "desiredQualities": ["string"],
+    "languageProfileId": "string | null",
+    "monitored": "boolean",
+    "minimumAvailability": "string",
+    "added": "string",
+    "hasFile": "boolean",
+    "wantsSubtitles": "boolean",
+    "releaseDate": "string | null",
+    "digitalReleaseDate": "string | null",
+    "physicalReleaseDate": "string | null",
+    "availabilityDelay": "integer",
+    "metadataLanguage": "string | null",
+    "preferOriginalTitle": "boolean",
+    "tmdbStatus": "string | null",
+    "files": [{ "id": "string", "relativePath": "string", "size": "integer", "dateAdded": "string", "quality": "object", "mediaInfo": "object", "releaseGroup": "string | null", "edition": "string | null" }],
+    "subtitles": [{ "id": "string", "language": "string", "relativePath": "string", "isForced": "boolean", "isHearingImpaired": "boolean", "format": "string", "matchScore": "number", "providerId": "string", "dateAdded": "string", "wasSynced": "boolean", "syncOffset": "number | null" }],
+    "subtitleStatus": { "satisfied": "boolean", "missing": ["string"], "existing": ["string"] }
+  }
 }
 ```
 
-### Example request
-
-```bash
-curl -H "x-api-key: cinephage_your_key_here" \
-  http://localhost:3000/api/library/movies/550e8400-e29b-41d4-a716-446655440000
-```
+There is no `credits`, `images`, `tagline`, `website`, `isAvailable`, `certification`, `alternativeTitles`, or `titleSlug` field returned by this endpoint.
 
 ---
 
 ## Update movie
 
-Updates movie metadata and settings.
+Updates movie settings such as monitoring, quality/scoring profile, root folder, and subtitle preferences. `PUT` is an alias of `PATCH` (same handler).
 
 ```
+PATCH /api/library/movies/:id
 PUT /api/library/movies/:id
 ```
-
-### Path parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| id | string | Movie UUID |
 
 ### Request body schema
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | monitored | boolean | No | Monitoring status |
+| scoringProfileId | string \| null | No | Scoring profile ID |
+| desiredQualities | string[] \| null | No | Multi-quality selection |
 | minimumAvailability | string | No | Minimum availability |
-| rootFolderPath | string | No | Root folder path |
-| qualityProfileId | string | No | Quality profile ID |
+| availabilityDelay | integer | No | 0-365 days |
+| providerRefs | object | No | `{ tmdb?, anilist?, mal? }` |
+| rootFolderId | string | No | Reassign root folder (cannot be unset once a movie has files) |
+| moveFilesOnRootChange | boolean | No | Move existing files when `rootFolderId` changes |
+| removeUnwantedFiles | boolean | No | Remove files for quality tiers no longer in `desiredQualities` |
+| wantsSubtitles | boolean | No | Subtitle monitoring |
+| languageProfileId | string \| null | No | Subtitle language profile |
+| delayProfileId | string \| null | No | Delay profile |
+| folderPath | string | No | Relative folder name within the root folder (corrects a drifted DB path) |
+| tmdbCollectionId | integer | No | TMDB collection ID |
+| collectionName | string | No | Collection name |
+| metadataLanguage | string | No | Metadata language override (triggers a background refresh) |
+| preferOriginalTitle | boolean | No | Prefer original title for display |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
 | 200 | Success |
-| 400 | Invalid request body |
-| 401 | Authentication required |
-| 404 | Movie not found |
+| 400 | Invalid request body, no valid fields, or root folder change requires `moveFilesOnRootChange` |
+| 500 | Failed to reconcile redundant quality files |
 
 ### Response schema
 
 ```json
 {
-  "success": "boolean",
-  "id": "string",
-  "updatedAt": "string"
+  "success": true,
+  "moveQueued": "boolean",
+  "moveTaskId": "string | undefined",
+  "moveTaskHistoryId": "string | undefined",
+  "removedCount": "integer",
+  "failedCount": "integer | undefined",
+  "warning": "string | undefined"
 }
 ```
 
 ### Example request
 
 ```bash
-curl -X PUT \
+curl -X PATCH \
   -H "Content-Type: application/json" \
   -H "x-api-key: cinephage_your_key_here" \
   -d '{"monitored": false}' \
   http://localhost:3000/api/library/movies/550e8400-e29b-41d4-a716-446655440000
 ```
 
-### Example response
-
-```json
-{
-  "success": true,
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "updatedAt": "2024-01-15T12:00:00Z"
-}
-```
-
 ---
 
 ## Delete movie
 
-Removes a movie from the library.
+Deletes movie files (marks the movie as missing but keeps its library entry), or removes the movie entirely with `removeFromLibrary=true`.
 
 ```
 DELETE /api/library/movies/:id
@@ -444,29 +327,43 @@ DELETE /api/library/movies/:id
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| deleteFiles | boolean | No | Also delete movie files (default: false) |
+| deleteFiles | boolean | No | Also delete files from disk (default: false) |
+| removeFromLibrary | boolean | No | Remove the movie from the library entirely, not just its files (default: false) |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
-| 204 | Deleted successfully |
-| 401 | Authentication required |
+| 200 | Success |
+| 400 | Movie has no files to delete (and `removeFromLibrary` is not set), or files are in a read-only root folder |
 | 404 | Movie not found |
+| 500 | Failed to delete movie files |
+
+### Response schema
+
+```json
+{ "success": true }
+```
+
+or, with `removeFromLibrary=true`:
+
+```json
+{ "success": true, "removed": true }
+```
 
 ### Example request
 
 ```bash
 curl -X DELETE \
   -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/library/movies/550e8400-e29b-41d4-a716-446655440000?deleteFiles=true"
+  "http://localhost:3000/api/library/movies/550e8400-e29b-41d4-a716-446655440000?deleteFiles=true&removeFromLibrary=true"
 ```
 
 ---
 
 ## Trigger auto search
 
-Initiates an automatic search for the movie.
+Automatically searches for and grabs the best release for a movie. This endpoint returns a **Server-Sent Events stream** (not a plain JSON response) with real-time progress.
 
 ```
 POST /api/library/movies/:id/auto-search
@@ -478,37 +375,29 @@ POST /api/library/movies/:id/auto-search
 |-----------|------|-------------|
 | id | string | Movie UUID |
 
-### Request body schema
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| searchType | string | No | Type of search (missing, cutOffUnmet, manual) |
-
 ### Response codes
 
 | Code | Description |
 |------|-------------|
-| 202 | Search initiated |
-| 401 | Authentication required |
+| 200 | SSE stream started |
 | 404 | Movie not found |
+| 409 | A search is already in progress for this movie |
+| 500 | Failed to start auto-search |
 
-### Response schema
+### SSE event types
 
-```json
-{
-  "success": "boolean",
-  "searchId": "string",
-  "message": "string"
-}
-```
+| Event | Description |
+|-------|-------------|
+| `search:started` | Search has begun |
+| `search:progress` | Progress update (`phase`, `message`, `progress`) |
+| `search:completed` | Search finished (`success`, `found`, `grabbed`, `releaseName`, `queueItemId`, `error`) |
+| `search:error` | Unhandled error during search |
 
 ### Example request
 
 ```bash
-curl -X POST \
-  -H "Content-Type: application/json" \
+curl -N -X POST \
   -H "x-api-key: cinephage_your_key_here" \
-  -d '{"searchType": "manual"}' \
   http://localhost:3000/api/library/movies/550e8400-e29b-41d4-a716-446655440000/auto-search
 ```
 
@@ -516,7 +405,7 @@ curl -X POST \
 
 ## Refresh metadata
 
-Refreshes movie metadata from TMDB.
+Synchronously refreshes movie metadata from TMDB (title, overview, artwork, runtime, genres, collection, external IDs, adult flag).
 
 ```
 POST /api/library/movies/:id/refresh
@@ -532,17 +421,28 @@ POST /api/library/movies/:id/refresh
 
 | Code | Description |
 |------|-------------|
-| 202 | Refresh queued |
-| 401 | Authentication required |
+| 200 | Refreshed |
 | 404 | Movie not found |
+| 409 | A refresh is already in progress for this movie |
+| 500 | Failed to refresh movie metadata |
 
 ### Response schema
 
 ```json
 {
-  "success": "boolean",
-  "taskId": "string",
-  "message": "string"
+  "success": true,
+  "movie": {
+    "id": "string",
+    "tmdbId": "integer",
+    "imdbId": "string | null",
+    "title": "string",
+    "year": "integer | null",
+    "overview": "string | null",
+    "posterPath": "string | null",
+    "backdropPath": "string | null",
+    "runtime": "integer | null",
+    "genres": ["string"]
+  }
 }
 ```
 
@@ -556,69 +456,115 @@ curl -X POST \
 
 ---
 
-## Bulk edit movies
+## Bulk add movies
 
-Updates multiple movies at once.
+Adds multiple movies to the library by TMDB ID in a single call. This is the `bulk` endpoint - it adds new movies, it does not edit existing ones.
 
 ```
-PUT /api/library/movies/bulk
+POST /api/library/movies/bulk
 ```
 
 ### Request body schema
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| ids | array | Yes | Array of movie UUIDs |
-| monitored | boolean | No | New monitoring status |
-| minimumAvailability | string | No | New minimum availability |
-| rootFolderPath | string | No | New root folder path |
-| qualityProfileId | string | No | New quality profile ID |
+| tmdbIds | integer[] | Yes | 1-50 TMDB movie IDs |
+| rootFolderId | string | Yes | Root folder ID |
+| scoringProfileId | string | No | Scoring profile ID |
+| monitored | boolean | No | Default: true |
+| minimumAvailability | string | No | Default: `released` |
+| availabilityDelay | integer | No | Default: 0 |
+| searchOnAdd | boolean | No | Default: true |
+| wantsSubtitles | boolean | No | Default: true |
+
+### Response schema
+
+```json
+{
+  "success": true,
+  "added": "integer",
+  "skipped": "integer",
+  "errors": [{ "tmdbId": "integer", "title": "string | undefined", "error": "string" }],
+  "movies": [{ "id": "string", "tmdbId": "integer", "title": "string" }]
+}
+```
+
+---
+
+## Batch update movies
+
+Updates `monitored` and/or `scoringProfileId` for multiple existing movies at once. `PUT` is an alias of `PATCH`.
+
+```
+PATCH /api/library/movies/batch
+PUT /api/library/movies/batch
+```
+
+### Request body schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| movieIds | string[] | Yes | Movie UUIDs to update |
+| updates | object | Yes | `{ monitored?: boolean, scoringProfileId?: string \| null }` |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
 | 200 | Success |
-| 400 | Invalid request body |
-| 401 | Authentication required |
+| 400 | Missing/invalid `movieIds` or `updates` |
+| 500 | Failed to batch update movies |
 
 ### Response schema
 
 ```json
 {
-  "success": "boolean",
-  "updatedCount": "integer",
-  "failedCount": "integer",
-  "failures": [
-    {
-      "id": "string",
-      "error": "string"
-    }
-  ]
+  "success": true,
+  "updatedCount": "integer"
 }
 ```
 
 ### Example request
 
 ```bash
-curl -X PUT \
+curl -X PATCH \
   -H "Content-Type: application/json" \
   -H "x-api-key: cinephage_your_key_here" \
   -d '{
-    "ids": ["550e8400-e29b-41d4-a716-446655440000", "660e8400-e29b-41d4-a716-446655440001"],
-    "monitored": true
+    "movieIds": ["550e8400-e29b-41d4-a716-446655440000", "660e8400-e29b-41d4-a716-446655440001"],
+    "updates": { "monitored": true }
   }' \
-  http://localhost:3000/api/library/movies/bulk
+  http://localhost:3000/api/library/movies/batch
 ```
 
-### Example response
+---
+
+## Batch delete movies
+
+Deletes files (or removes entirely) for multiple movies at once.
+
+```
+DELETE /api/library/movies/batch
+```
+
+### Request body schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| movieIds | string[] | Yes | Movie UUIDs |
+| deleteFiles | boolean | No | Delete files from disk (default: false) |
+| removeFromLibrary | boolean | No | Remove movies from the library entirely (default: false) |
+
+### Response schema
 
 ```json
 {
-  "success": true,
-  "updatedCount": 2,
-  "failedCount": 0,
-  "failures": []
+  "success": "boolean",
+  "deletedCount": "integer",
+  "removedCount": "integer",
+  "skippedCount": "integer",
+  "failedCount": "integer",
+  "errors": [{ "id": "string", "error": "string" }]
 }
 ```
 

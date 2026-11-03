@@ -8,7 +8,7 @@ import { hasDirectPortConflicts } from './validateStackState';
 
 const GLUETUN_IMAGE = 'qmcgaw/gluetun:latest';
 
-/** caddy-docker-proxy — label-driven routes; mount Docker socket (see warnings). */
+/** caddy-docker-proxy - label-driven routes; mount Docker socket (see warnings). */
 const CADDY_DOCKER_PROXY_IMAGE = 'lucaslorentz/caddy-docker-proxy:2.8-alpine';
 
 /** LinuxServer qBittorrent: sync forwarded port from Gluetun (when qBittorrent uses network_mode: service:gluetun). */
@@ -48,7 +48,7 @@ export function collectWarnings(s: ResolvedStack): string[] {
 
 	if (s.proxyMode === 'direct' && hasDirectPortConflicts(s)) {
 		w.push(
-			'Two or more enabled services use the same host port in the generated defaults — edit the compose file to change host port mappings.'
+			'Two or more enabled services use the same host port in the generated defaults - edit the compose file to change host port mappings.'
 		);
 	}
 
@@ -57,14 +57,14 @@ export function collectWarnings(s: ResolvedStack): string[] {
 			w.push('Gluetun is enabled but nothing is selected to route (torrent client, aria2, or Bitmagnet).');
 		} else if (s.gluetunTarget && !sv[gluetunTargetToServiceName(s.gluetunTarget)]) {
 			w.push(
-				`Gluetun targets "${s.gluetunTarget}" but that service is not enabled — fix choices or disable VPN.`
+				`Gluetun targets "${s.gluetunTarget}" but that service is not enabled - fix choices or disable VPN.`
 			);
 		}
 	}
 
 	if (s.proxyMode === 'caddy') {
 		w.push(
-			'Caddy Docker Proxy mounts the Docker socket to discover labeled services — use only on trusted hosts.'
+			'Caddy Docker Proxy mounts the Docker socket to discover labeled services - use only on trusted hosts.'
 		);
 	}
 
@@ -76,7 +76,7 @@ export function collectWarnings(s: ResolvedStack): string[] {
 
 	if (sv.altmount) {
 		w.push(
-			'Altmount may require /dev/fuse, SYS_ADMIN, or Docker socket access — review https://altmount.kipsilabs.top before production use.'
+			'Altmount may require /dev/fuse, SYS_ADMIN, or Docker socket access - review https://altmount.kipsilabs.top before production use.'
 		);
 	}
 
@@ -86,7 +86,7 @@ export function collectWarnings(s: ResolvedStack): string[] {
 
 	if (gspPortSyncActive(s)) {
 		w.push(
-			'GSP port sync: `GSP_GTN_API_KEY` is pre-filled in the generated `.env` (rotate on the VPN step if needed). Enable qBittorrent Web UI “Bypass authentication for clients on localhost” — see https://github.com/t-anc/GSP-Qbittorent-Gluetun-sync-port-mod'
+			'GSP port sync: `GSP_GTN_API_KEY` is pre-filled in the generated `.env` (rotate on the VPN step if needed). Enable qBittorrent Web UI “Bypass authentication for clients on localhost” - see https://github.com/t-anc/GSP-Qbittorent-Gluetun-sync-port-mod'
 		);
 	}
 
@@ -97,7 +97,7 @@ export function collectWarnings(s: ResolvedStack): string[] {
 	}
 	if (sv.jellyfin && s.jellyfinHwAccel === 'nvenc') {
 		w.push(
-			'Jellyfin NVENC: requires NVIDIA Container Toolkit and a compatible driver. `runtime: nvidia` may not work on all Docker setups — see LinuxServer docs.'
+			'Jellyfin NVENC: requires NVIDIA Container Toolkit and a compatible driver. `runtime: nvidia` may not work on all Docker setups - see LinuxServer docs.'
 		);
 	}
 
@@ -107,7 +107,7 @@ export function collectWarnings(s: ResolvedStack): string[] {
 
 	if (s.gluetunEnabled) {
 		w.push(
-			'VPN secrets are not inlined in this compose file — set variables in the generated `.env` and run `docker compose` from this directory.'
+			'VPN secrets are not inlined in this compose file - set variables in the generated `.env` and run `docker compose` from this directory.'
 		);
 	}
 
@@ -292,7 +292,7 @@ function buildGluetunService(s: ResolvedStack, d: DirectHostPortMap): Record<str
 	if (gspPortSyncActive(s)) {
 		environment = [
 			...environment,
-			// Same API key as GSP_GTN_API_KEY on qBittorrent — Gluetun control server (see gluetun-wiki control-server.md)
+			// Same API key as GSP_GTN_API_KEY on qBittorrent - Gluetun control server (see gluetun-wiki control-server.md)
 			'HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"apikey","apikey":"${GSP_GTN_API_KEY}"}'
 		];
 		if (s.vpnPreset === 'protonvpn' || s.vpnPreset === 'mullvad') {
@@ -323,7 +323,7 @@ function torrentUsesGluetun(s: ResolvedStack, serviceName: TorrentServiceName): 
 function buildCinephageService(s: ResolvedStack, publishHostPorts: boolean): Record<string, unknown> {
 	const d = s.directPorts;
 	const svc: Record<string, unknown> = {
-		image: 'ghcr.io/moldytaint/cinephage:${IMAGE_TAG:-latest}',
+		image: 'ghcr.io/cinephage/cinephage:${IMAGE_TAG:-latest}',
 		container_name: 'cinephage',
 		restart: 'unless-stopped',
 		init: true,
@@ -719,10 +719,10 @@ export function generateStackOutput(state: StackConfiguratorState): GeneratedSta
 
 	const gluetunNote =
 		s.gluetunEnabled && s.vpnPreset === 'protonvpn' ?
-			`# Gluetun (ProtonVPN): WIREGUARD_PRIVATE_KEY from Proton — https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/protonvpn.md
+			`# Gluetun (ProtonVPN): WIREGUARD_PRIVATE_KEY from Proton - https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/protonvpn.md
 `
 		: s.gluetunEnabled && s.vpnPreset === 'mullvad' ?
-			`# Gluetun (Mullvad): WireGuard key from Mullvad account — see https://github.com/qdm12/gluetun-wiki
+			`# Gluetun (Mullvad): WireGuard key from Mullvad account - see https://github.com/qdm12/gluetun-wiki
 `
 		: s.gluetunEnabled && s.vpnPreset === 'custom' ?
 			`# Gluetun (custom): verify VPN_* / WireGuard fields and use .env or secrets for passwords.
@@ -730,8 +730,8 @@ export function generateStackOutput(state: StackConfiguratorState): GeneratedSta
 		: '';
 
 	const header = `# =============================================================================
-# Cinephage stack (generated example — review before use)
-# Secrets are referenced as \${VAR} — use the generated .env next to this file (do not commit .env).
+# Cinephage stack (generated example - review before use)
+# Secrets are referenced as \${VAR} - use the generated .env next to this file (do not commit .env).
 # Point Cinephage download clients at your containers on the Docker network.
 # IMAGE_TAG: export or set in a .env file next to this compose file.
 ${gluetunNote}# =============================================================================
@@ -770,7 +770,7 @@ ${gluetunNote}# ================================================================
 
 	const caddyProxyNote =
 		s.proxyMode === 'caddy' ?
-			`# Reverse proxy: Caddy Docker Proxy — routes from Docker labels on each service (no Caddyfile).
+			`# Reverse proxy: Caddy Docker Proxy - routes from Docker labels on each service (no Caddyfile).
 `
 		:	'';
 

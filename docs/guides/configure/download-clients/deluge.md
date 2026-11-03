@@ -88,7 +88,7 @@ You should see the Deluge Web UI login page. Enter the password you configured.
 | **Use SSL** | Enable for HTTPS | Unchecked (unless configured) |
 | **URL Base** | For reverse proxy setups | `/deluge` (optional) |
 
-**Note:** Deluge Web UI typically uses password-only authentication (no username).
+**Note:** Deluge's Web UI itself uses password-only authentication - the username field only matters if the Web UI is placed behind something requiring HTTP basic auth (e.g. a reverse proxy).
 
 **Host configuration guide:**
 
@@ -96,6 +96,15 @@ You should see the Deluge Web UI login page. Enter the password you configured.
 - Docker on same host: Use host IP (e.g., `192.168.1.100`)
 - Separate machine: Use that machine's IP address
 - Docker container name: `deluge` (if on same network)
+
+### Options
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| **Movies category** | Deluge label applied to movie downloads | `movies` |
+| **TV Shows category** | Deluge label applied to TV downloads | `tv` |
+| **Recent priority / Older priority** | Download priority (Default, High, Force) for recently-aired vs. older content | Default |
+| **Start as** | Initial state for added torrents (Start, Pause, Force) | Start |
 
 ## Step 4: Test and save
 
@@ -163,19 +172,18 @@ If the test fails:
 
 - Check path mappings if Cinephage and Deluge use different paths
 - Verify Cinephage can access the download folder
-- Check Cinephage logs in **Settings > Logs**
+- Check Cinephage logs in **Settings > Monitoring > Logs**
 - Ensure the download directory has correct permissions
 
 ## Additional Deluge configuration
 
 ### Label plugin
 
-The Label plugin can organize downloads:
+Cinephage tags downloads with the Movies/TV category names from its Deluge client settings using Deluge's Label plugin - but the plugin must be enabled in Deluge itself first:
 
 1. Go to **Preferences** > **Plugins**
 2. Enable **Label** plugin
-3. In Cinephage, set a category/label name
-4. Downloads will be tagged with this label in Deluge
+3. Cinephage automatically creates and applies the label (from its Movies/TV category fields) to each torrent it adds - no extra Deluge-side setup is needed once the plugin is on
 
 ### Bandwidth settings
 

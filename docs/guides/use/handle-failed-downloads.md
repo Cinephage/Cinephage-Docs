@@ -35,7 +35,8 @@ Navigate to **Activity** to see:
 
 - **Queue** - Current downloads in progress
 - **History** - Completed and failed downloads
-- **Blocklist** - Releases marked as problematic
+
+The blocklist is a separate settings section, not part of Activity - see [Using the Blocklist](#using-the-blocklist) below.
 
 ### Reading the queue
 
@@ -214,7 +215,6 @@ After fixing the issue, you have options:
 If task hasn't run yet, wait for:
 - Missing Content Search task
 - Cutoff Unmet Search task
-- RSS Sync
 
 **Option 2: Manual Search**
 
@@ -249,8 +249,6 @@ The blocklist prevents problematic releases from being downloaded again:
 **Blocklist Behavior:**
 - Blocked releases are skipped in searches
 - They won't appear in search results
-- RSS sync ignores them
-- They don't count against indexer limits
 
 ### Automatic blocklisting
 
@@ -290,7 +288,7 @@ Add releases to blocklist manually:
 
 Access blocklisted releases:
 
-1. Go to **Activity > Blocklist**
+1. Go to **Settings > Blocklist**
 2. See all blocked releases
 3. Columns include:
    - Release title
@@ -304,7 +302,7 @@ Access blocklisted releases:
 
 If you want to allow a release again:
 
-1. Go to **Activity > Blocklist**
+1. Go to **Settings > Blocklist**
 2. Find the release
 3. Click **Remove** or checkbox + **Remove Selected**
 4. Release can be downloaded again
@@ -397,18 +395,22 @@ You can also access bulk clear from **Activity > History**:
 Use the queue API to programmatically clear failed downloads:
 
 ```bash
-# Clear all failed items
+# Clear failed items, optionally only ones older than N days, or preview with dryRun
 curl -X POST \
   -H "x-api-key: cinephage_your_key_here" \
-  http://localhost:3000/api/queue/clear-failed
+  "http://localhost:3000/api/queue/clear-failed?olderThanDays=7&dryRun=false"
 
 # Response
 {
   "success": true,
-  "clearedCount": 15,
-  "blocklistAdded": 0
+  "dryRun": false,
+  "olderThanDays": 7,
+  "summary": { "cleared": 15, "total": 15 },
+  "cleared": ["..."]
 }
 ```
+
+This endpoint clears failed items from the queue; it does not add them to the blocklist - use the blocklist endpoints/UI separately for that.
 
 ### Queue cleanup API
 
@@ -434,19 +436,9 @@ If a download disappears from the download client before Cinephage can import it
 
 If recovery fails, the item is marked as failed and appears in **Activity > History** where you can review the error and search for an alternative release.
 
-### Failed download handling settings
+### Failed download handling
 
-Configure automatic failure handling:
-
-1. Go to **Settings > Media Management > Failed Downloads**
-2. Configure:
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Auto-Retry** | Automatically retry failed downloads | Enabled |
-| **Retry Attempts** | How many times to retry | 3 |
-| **Retry Delay** | Wait time between retries | 30 minutes |
-| **Redownload** | Search for alternative after max retries | Enabled |
+There is no dedicated user-configurable "retry attempts/retry delay" settings page - failed-download recovery is handled internally: a failed grab gets a 1-hour cooldown before Cinephage attempts a re-grab, and permanently-failed items stop being retried automatically rather than looping forever (they still show up in Activity > History for you to search alternatives manually or blocklist).
 
 ### Release rejection analysis
 
@@ -576,7 +568,7 @@ If quality keeps being rejected:
 
 2. **Remove from Blocklist:**
    ```
-   Activity > Blocklist > Find release > Remove
+   Settings > Blocklist > Find release > Remove
    ```
 
 3. **Search Again:**

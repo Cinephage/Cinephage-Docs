@@ -1,7 +1,7 @@
 ---
 title: Delay Profiles
 description: Configure download delays to prefer higher quality releases over time
-sidebar_position: 7
+sidebar_position: 3
 tags: [delay, profiles, configuration, guide, quality]
 keywords: [delay profiles, quality, usenet, torrent]
 ---
@@ -59,55 +59,32 @@ If a better quality release appears during the delay:
 
 ## Creating a Delay Profile
 
-Navigate to **Settings > Quality > Delay Profiles**:
+Navigate to **Settings > Library > Quality Settings** and select the **Delay Profiles** tab:
 
-### Basic settings
+### Fields
 
-| Setting      | Description              | Example           |
-| ------------ | ------------------------ | ----------------- |
-| **Name**     | Profile name             | "Wait for WEB-DL" |
-| **Protocol** | Usenet, Torrent, or Both | Both              |
-| **Delay**    | Hours to wait            | 6 hours           |
+| Setting | Description | Example |
+| ------- | ------------ | ------- |
+| **Name** | Profile name | "Wait for WEB-DL" |
+| **Enabled** | Whether this profile is active | On |
+| **Torrent delay (minutes)** | How long to wait before grabbing a torrent release | 720 (12 hours) |
+| **Usenet delay (minutes)** | How long to wait before grabbing a usenet release | 0 |
+| **Preferred protocol (grabs immediately)** | None, Torrent, or Usenet - a release on the preferred protocol skips its delay and grabs right away | Usenet |
+| **Bypass delay for 4K (2160p) releases** | Skip the delay entirely when a 2160p release is found | Off |
+| **Bypass delay if score exceeds** | Skip the delay once a release's custom-format score passes this threshold (leave empty to disable) | 2000 |
 
-### Protocol-Specific delays
-
-Different delays for different protocols:
-
-| Protocol    | Delay    | Use Case                |
-| ----------- | -------- | ----------------------- |
-| **Torrent** | 12 hours | Wait for scene releases |
-| **Usenet**  | 0 hours  | Grab usenet immediately |
-
-This prefers usenet but falls back to torrents after 12 hours.
+Setting Torrent delay to 12 hours and Usenet delay to 0, with Usenet as the preferred protocol, waits for scene torrent releases but grabs usenet immediately.
 
 ---
 
 ## Bypass Conditions
 
-Sometimes you don't want to wait. Set conditions to bypass the delay:
+Delay profiles support two built-in bypass conditions, either of which lets a release skip the wait entirely:
 
-### Bypass if highest quality
+- **4K bypass** - Toggle "Bypass delay for 4K (2160p) releases" so a 2160p release grabs immediately instead of waiting
+- **Score bypass** - Set "Bypass delay if score exceeds" to a threshold; once a release's calculated score passes it, the delay is skipped
 
-```
-Bypass if: Release meets highest quality in profile
-Example: 2160p BluRay appears (nothing better exists)
-```
-
-### Bypass if score threshold
-
-```
-Bypass if: Score >= 2000
-Example: Trusted group + high quality = grab now
-```
-
-### Bypass tags
-
-Apply bypass to specific content:
-
-```
-Tag: "no-delay"
-Applies to: Movies/Series with this tag bypass delay
-```
+There is no separate tag-based bypass mechanism - bypass behavior is controlled per delay profile via these two settings, plus the "Preferred protocol" field which always grabs immediately for the chosen protocol.
 
 ---
 
@@ -152,7 +129,7 @@ Result: Only grabs torrents if usenet fails for 3 days
 
 ### Global default
 
-Set a default profile in **Settings > Quality > Delay Profiles**:
+Set a default profile in **Settings > Library > Quality Settings** (**Delay Profiles** tab):
 
 - Applies to all new monitored items
 - Can be overridden per-item
@@ -176,24 +153,7 @@ Override the default for specific content:
 
 ## The Pending Releases Queue
 
-View all delayed releases:
-
-**Settings > Tasks > Pending Releases**
-
-| Column         | Description             |
-| -------------- | ----------------------- |
-| **Title**      | Movie or episode        |
-| **Release**    | Release name            |
-| **Quality**    | Quality score           |
-| **Protocol**   | Usenet or Torrent       |
-| **Delay Ends** | When it will be grabbed |
-| **Actions**    | Grab now / Remove       |
-
-### Manual actions
-
-- **Grab Now** - Bypass delay and download immediately
-- **Remove** - Remove from queue (won't grab)
-- **View Details** - See why it's pending
+Releases waiting out a delay are tracked internally and processed automatically by the scheduled "pending release" task once the delay period elapses - there is currently no dedicated settings page for manually listing, grabbing, or removing individual pending releases.
 
 ---
 
@@ -235,22 +195,19 @@ Monitoring tasks respect delays:
 ### Delay too long
 
 1. **Reduce delay hours** - Start with 6-12 hours
-2. **Add bypass conditions** - Score threshold, highest quality
-3. **Use tags** - Bypass for specific content
+2. **Add bypass conditions** - Score threshold, highest quality, or preferred protocol
 
 ### Delay being ignored
 
 1. **Check cutoff unmet** - Ignores delays
 2. **Check manual search** - Manual grabs bypass delay
-3. **Check bypass tags** - Item may have bypass tag
+3. **Check bypass conditions** - 4K bypass, score bypass, or preferred protocol may have triggered
 
 ### Conflicting profiles
 
 If multiple profiles apply:
 
-- **Per-item overrides global**
-- **More specific wins** (e.g., series vs global)
-- **First match applies**
+- **Per-item overrides global** - a movie/series-level delay profile assignment wins over the global default
 
 ---
 

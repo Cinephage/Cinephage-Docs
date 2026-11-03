@@ -12,12 +12,12 @@ Endpoints for searching releases across configured indexers.
 
 ## Authentication
 
-All search endpoints require authentication.
+`GET /api/search` has no auth check directly in its route handler, but it's not actually reachable unauthenticated: a global gate in `hooks.server.ts` requires a valid session or API key on every `/api/*` route, and `/api/search` is not on the viewer read-only allowlist, so it's admin-only in practice. See [API Authentication](/reference/api/authentication) for how that global gate works.
 
 | Endpoint | Auth Level |
 |----------|------------|
-| GET `/api/search` | requireAuth |
-| POST `/api/download/grab` | requireAuth |
+| GET `/api/search` | 🔐 Admin only |
+| POST `/api/download/grab` | 🔐 Admin only |
 
 ---
 
@@ -33,39 +33,38 @@ GET /api/search
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| query | string | No | Search query string |
-| type | string | No | Media type (movie, tv) |
-| tmdbId | integer | No | TMDB ID to search for |
-| tvdbId | integer | No | TVDB ID for TV shows |
-| seriesId | string | No | Series UUID to search for |
-| movieId | string | No | Movie UUID to search for |
-| seasonNumber | integer | No | Season number (TV only) |
-| episodeNumber | integer | No | Episode number (TV only) |
+| q | string | No | Free-text search query |
+| searchType | string | No | `basic`, `movie`, or `tv` (default: `basic`) |
+| searchMode | string | No | `all` or `multiSeasonPack` |
+| categories | string | No | Comma-separated Newznab category IDs |
 | indexers | string | No | Comma-separated indexer IDs |
-| categories | string | No | Comma-separated category IDs |
 | minSeeders | integer | No | Minimum seeders (torrent) |
-| maxAge | integer | No | Maximum age in days |
-| limit | integer | No | Maximum results (default: 100) |
+| limit | integer | No | Maximum results |
+| imdbId | string | No | IMDB ID |
+| tmdbId | integer | No | TMDB ID |
+| tvdbId | integer | No | TVDB ID (TV only) |
+| year | integer | No | Release year |
+| season | integer | No | Season number (TV only) |
+| episode | integer | No | Episode number (TV only) |
+| language | string | No | ISO 639-1 language code preference |
+| enrich | boolean | No | Enable quality filtering and scoring (`true`/`1`) |
+| scoringProfileId | string | No | Scoring profile ID to use when `enrich=true` |
+| matchToTmdb | boolean | No | Match releases to TMDB entries (`true`/`1`) |
+| filterRejected | boolean | No | Filter out releases that fail quality requirements (`true`/`1`) |
+| minScore | integer | No | Minimum score to include, 0-1000 (with `enrich=true`) |
 
-### Query types
-
-| Type | Required parameters | Description |
-|------|---------------------|-------------|
-| `manual` | query | Free-form search |
-| `movie` | movieId or tmdbId | Search for specific movie |
-| `tv` | seriesId or tmdbId | Search for TV shows |
-| `episode` | seriesId, seasonNumber, episodeNumber | Search specific episode |
+A `basic` search (the default `searchType`) requires `q`.
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
 | 200 | Success |
-| 400 | Invalid parameters |
-| 401 | Authentication required |
-| 404 | Movie/series not found |
+| 400 | Invalid query parameters, or no eligible indexers for this search |
 
 ### Response schema
+
+Without `enrich=true`:
 
 ```json
 {
@@ -73,83 +72,51 @@ GET /api/search
     {
       "guid": "string",
       "title": "string",
-      "size": "integer",
-      "indexer": "string",
-      "indexerId": "string",
-      "publishDate": "string",
       "downloadUrl": "string",
-      "infoUrl": "string",
-      "category": ["string"],
-      "seeders": "integer",
-      "leechers": "integer",
-      "protocol": "string",
-      "quality": {
-        "quality": "string",
-        "resolution": "string",
-        "source": "string",
-        "modifier": "string"
-      },
-      "qualityScore": "integer",
-      "customFormatScore": "integer",
-      "rejections": ["string"],
-      "approved": "boolean",
-      "releaseGroup": "string",
-      "language": "string",
-      "mappedMovie": {
-        "id": "string",
-        "title": "string",
-        "year": "integer"
-      },
-      "mappedSeries": {
-        "id": "string",
-        "title": "string"
-      },
-      "mappedEpisode": {
-        "seasonNumber": "integer",
-        "episodeNumber": "integer"
-      }
-    }
-  ],
-  "indexerResults": [
-    {
+      "commentsUrl": "string",
+      "publishDate": "string",
+      "size": "integer",
       "indexerId": "string",
       "indexerName": "string",
-      "resultCount": "integer",
-      "status": "string",
-      "errorMessage": "string"
+      "protocol": "torrent | usenet | streaming",
+      "categories": [{ "id": "integer", "name": "string" }],
+      "seeders": "integer",
+      "leechers": "integer",
+      "imdbId": "string",
+      "tmdbId": "integer",
+      "tvdbId": "integer",
+      "season": "integer",
+      "episode": "integer"
     }
   ],
-  "totalResults": "integer",
-  "searchDuration": "number",
-  "searchTime": "string"
+  "meta": {
+    "totalResults": "integer",
+    "searchTimeMs": "integer",
+    "indexerCount": "integer",
+    "indexerResults": [
+      {
+        "indexerId": "string",
+        "indexerName": "string",
+        "count": "integer",
+        "durationMs": "integer",
+        "error": "string | undefined",
+        "searchMethod": "string"
+      }
+    ],
+    "rejectedIndexers": "array"
+  }
 }
 ```
 
-### Release quality fields
+`downloadUrl` values are redacted (API keys stripped) before being returned to the client.
 
-| Field | Description | Values |
-|-------|-------------|--------|
-| `quality` | Quality name | Bluray-1080p, WEBDL-720p, HDTV-1080p, etc. |
-| `resolution` | Video resolution | 480p, 720p, 1080p, 2160p |
-| `source` | Media source | Bluray, WEB, HDTV, DVD |
-| `modifier` | Quality modifier | REMUX, x265, HDR, DV |
-
-### Rejection reasons
-
-| Reason | Description |
-|--------|-------------|
-| `Unknown movie` | Cannot map to library movie |
-| `Unknown series` | Cannot map to library series |
-| `Unknown episode` | Cannot map to specific episode |
-| `Release rejected` | Does not meet quality requirements |
-| `Custom format cut-off unmet` | Below custom format score threshold |
-| `Release is blacklisted` | In blacklist |
+With `enrich=true`, each release additionally includes parsed metadata and scoring fields (`parsed`, `totalScore`, `rejected`, `rejectionReason`, `rejections`, `matchedFormats`, `tmdbMatched`, `upgradeStatus`, etc.), and `meta` additionally includes `afterDedup`, `afterFiltering`, `filterBreakdown`, `afterEnrichment`, `rejectedCount`, `enrichTimeMs`, and `scoringProfileId`. `meta.indexerResults` becomes an object keyed by indexer ID rather than an array in this mode.
 
 ### Example request
 
 ```bash
 curl -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/search?movieId=550e8400-e29b-41d4-a716-446655440000&limit=10"
+  "http://localhost:3000/api/search?searchType=movie&tmdbId=27205&limit=10"
 ```
 
 ### Example response
@@ -160,47 +127,34 @@ curl -H "x-api-key: cinephage_your_key_here" \
     {
       "guid": "Indexer1-12345",
       "title": "Inception.2010.1080p.BluRay.x264-Group",
-      "size": 10485760000,
-      "indexer": "Indexer1",
-      "indexerId": "a10e8400-e29b-41d4-a716-446655440010",
-      "publishDate": "2024-01-15T08:00:00Z",
       "downloadUrl": "https://example.com/download/12345",
-      "infoUrl": "https://example.com/details/12345",
-      "category": ["Movies", "HD"],
-      "seeders": 150,
-      "leechers": 12,
-      "protocol": "torrent",
-      "quality": {
-        "quality": "Bluray-1080p",
-        "resolution": "1080p",
-        "source": "Bluray",
-        "modifier": "x264"
-      },
-      "qualityScore": 100,
-      "customFormatScore": 1500,
-      "rejections": [],
-      "approved": true,
-      "releaseGroup": "Group",
-      "language": "English",
-      "mappedMovie": {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "title": "Inception",
-        "year": 2010
-      }
-    }
-  ],
-  "indexerResults": [
-    {
+      "commentsUrl": "https://example.com/details/12345",
+      "publishDate": "2024-01-15T08:00:00.000Z",
+      "size": 10485760000,
       "indexerId": "a10e8400-e29b-41d4-a716-446655440010",
       "indexerName": "Indexer1",
-      "resultCount": 15,
-      "status": "success",
-      "errorMessage": null
+      "protocol": "torrent",
+      "categories": [{ "id": 2040, "name": "Movies/HD" }],
+      "seeders": 150,
+      "leechers": 12,
+      "tmdbId": 27205
     }
   ],
-  "totalResults": 15,
-  "searchDuration": 2.345,
-  "searchTime": "2024-01-15T10:30:00Z"
+  "meta": {
+    "totalResults": 15,
+    "searchTimeMs": 2345,
+    "indexerCount": 1,
+    "indexerResults": [
+      {
+        "indexerId": "a10e8400-e29b-41d4-a716-446655440010",
+        "indexerName": "Indexer1",
+        "count": 15,
+        "durationMs": 2100,
+        "searchMethod": "torznab"
+      }
+    ],
+    "rejectedIndexers": []
+  }
 }
 ```
 
@@ -208,7 +162,7 @@ curl -H "x-api-key: cinephage_your_key_here" \
 
 ## Grab release
 
-Downloads a specific release to the download client.
+Sends a release to the configured download client and links it to a movie or series.
 
 ```
 POST /api/download/grab
@@ -218,32 +172,54 @@ POST /api/download/grab
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| guid | string | Yes | Release GUID from search |
-| indexerId | string | Yes | Indexer ID |
-| movieId | string | No | Movie UUID (for movies) |
-| seriesId | string | No | Series UUID (for TV) |
+| title | string | Yes | Release title |
+| mediaType | string | Yes | `movie` or `tv` |
+| downloadUrl or magnetUrl | string | One required | Download link for the release |
+| movieId or seriesId | string | One required | Movie or series UUID to link the download to |
+| guid | string | No | Release GUID from search |
+| infoHash | string | No | Torrent info hash |
+| indexerId | string | No | Indexer ID |
+| indexerName | string | No | Indexer display name |
+| protocol | string | No | `torrent`, `usenet`, or `streaming` |
+| categories | integer[] | No | Newznab category IDs (validated against `mediaType`) |
+| size | number | No | Release size in bytes |
+| publishDate | string | No | ISO datetime |
+| commentsUrl | string | No | Link to comments/details page |
+| episodeIds | string[] | No | Episode UUIDs (TV) |
 | seasonNumber | integer | No | Season number (TV) |
-| episodeIds | array | No | Episode UUIDs (TV) |
+| isAutomatic | boolean | No | Whether this grab was triggered automatically |
+| isUpgrade | boolean | No | Whether this grab is an upgrade of an existing file |
+| force | boolean | No | Bypass blocklist/duplicate checks |
+| streamUsenet | boolean | No | Stream NZB content instead of downloading |
+| acquisitionProtocol | string | No | `default`, `torrent`, or `debrid` |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
-| 201 | Grab successful |
-| 400 | Invalid request |
-| 401 | Authentication required |
-| 404 | Release or media not found |
-| 409 | Release already grabbed |
+| 200 | Grab succeeded or failed with a handled error (check `success`) |
+| 400 | Invalid request body |
+| 422 | Category/title mismatch, missing protocol, or release rejected |
+| 500 | Unexpected error during grab |
 
 ### Response schema
 
 ```json
 {
   "success": "boolean",
-  "downloadId": "string",
-  "queueId": "string",
-  "title": "string",
-  "message": "string"
+  "data": {
+    "queueId": "string",
+    "hash": "string",
+    "clientId": "string",
+    "clientName": "string",
+    "category": "string",
+    "wasDuplicate": "boolean",
+    "isUpgrade": "boolean"
+  },
+  "error": "string",
+  "errorCode": "string",
+  "rejectionType": "string",
+  "decision": "object"
 }
 ```
 
@@ -254,8 +230,12 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -H "x-api-key: cinephage_your_key_here" \
   -d '{
+    "title": "Inception.2010.1080p.BluRay.x264-Group",
+    "mediaType": "movie",
+    "downloadUrl": "https://example.com/download/12345",
     "guid": "Indexer1-12345",
     "indexerId": "a10e8400-e29b-41d4-a716-446655440010",
+    "protocol": "torrent",
     "movieId": "550e8400-e29b-41d4-a716-446655440000"
   }' \
   http://localhost:3000/api/download/grab
@@ -266,62 +246,27 @@ curl -X POST \
 ```json
 {
   "success": true,
-  "downloadId": "dl_550e8400-e29b-41d4-a716-446655440020",
-  "queueId": "q_550e8400-e29b-41d4-a716-446655440021",
-  "title": "Inception.2010.1080p.BluRay.x264-Group",
-  "message": "Release sent to download client"
+  "data": {
+    "queueId": "q_550e8400-e29b-41d4-a716-446655440021",
+    "hash": "abc123",
+    "clientId": "dc_1",
+    "clientName": "qBittorrent",
+    "category": "movies"
+  }
 }
 ```
 
 ---
 
-## Scoring and ranking
+## Search protocols
 
-### Quality score
+Indexers and their releases use one of three protocols:
 
-Quality scores range from 0 to 100, with higher values indicating better quality.
-
-| Quality | Score |
-|---------|-------|
-| Bluray-2160p | 100 |
-| WEBDL-2160p | 90 |
-| Bluray-1080p | 80 |
-| WEBDL-1080p | 70 |
-| HDTV-1080p | 60 |
-| Bluray-720p | 50 |
-| WEBDL-720p | 40 |
-| HDTV-720p | 30 |
-| DVD | 20 |
-| SDTV | 10 |
-
-### Custom format score
-
-Custom format scores are calculated based on matching conditions:
-
-| Field | Description |
-|-------|-------------|
-| `customFormatScore` | Total score from all matching Custom Formats |
-| `rejections` | Reasons if score is below cutoff |
-
-### Release approval
-
-A release is `approved` when:
-- It maps to a library movie/episode
-- It meets quality requirements
-- It meets custom format score cutoff
-- It is not blacklisted
-
----
-
-## Search providers
-
-Cinephage supports searching across multiple indexer types:
-
-| Type | Protocols | Description |
-|------|-----------|-------------|
-| Usenet | NZB | Newznab-compatible indexers |
-| Torrent | Magnet, Torrent file | Torznab and RSS indexers |
-| Live TV | M3U | Live TV sources |
+| Protocol | Description |
+|----------|-------------|
+| `torrent` | Torznab and RSS-based torrent indexers |
+| `usenet` | Newznab-compatible usenet indexers |
+| `streaming` | Debrid/streaming-backed release sources |
 
 ---
 

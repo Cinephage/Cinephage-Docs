@@ -1,7 +1,7 @@
 ---
 title: Root Folders
 description: Set up and manage Root Folders for your media library
-sidebar_position: 4
+sidebar_position: 1
 tags: [library, root-folders, configuration, guide]
 keywords: [library, Root Folders, organization, media management]
 ---
@@ -44,7 +44,7 @@ A root folder is a base directory where Cinephage:
 
 ### Step 1: access settings
 
-1. Go to ****Settings > Media Management > Root Folders****
+1. Go to **Settings > Library > Root Folders**
 2. Click **Add Root Folder**
 
 ### Step 2: configure folder
@@ -54,8 +54,17 @@ A root folder is a base directory where Cinephage:
 | **Name** | Display name | "Movies", "TV Shows" |
 | **Path** | Container path to folder | `/media/movies` |
 | **Media Type** | Movies or TV Shows | Select appropriate type |
-| **Default Quality** | Profile for new additions | "Balanced" |
-| **Default Language** | Language profile | "English" |
+| **Media Subtype** | Standard or Anime | "Standard" |
+| **Default** | Use as the default root folder for this media type | Off |
+| **Read Only** | Prevent Cinephage from writing/moving files here | Off |
+| **Preserve Symlinks** | Don't resolve symlinks when scanning | Off |
+| **Default Monitored** | Whether new items added here are monitored by default | On |
+| **Blocked Video Extensions** | File extensions to ignore during import (e.g. `.sample.mkv`) | (none) |
+| **Skip Folder Patterns** | Folder names to skip entirely during disk scan (case-insensitive exact match) | (none) |
+
+:::note[Quality and language profiles aren't set on the root folder]
+Root folders don't carry a default quality or language profile. A default **quality profile** is set per-**library** instead (Settings > Library > Libraries), and language profile has a single global default (see [Language Preferences](../languages/language-preferences)) with per-item overrides - not a per-root-folder setting.
+:::
 
 ### Step 3: multiple Root Folders
 
@@ -122,15 +131,14 @@ Each root folder is dedicated to one media type. Don't mix movies and TV in the 
 ### View Root Folders
 
 ```
-**Settings > Media Management > Root Folders**
+**Settings > Library > Root Folders**
 ```
 
 Shows:
 - Folder name and path
-- Media type
+- Media type (and subtype)
 - Number of items
 - Free space available
-- Default profiles
 
 ### Edit root folder
 
@@ -140,8 +148,8 @@ Shows:
 
 **What can be changed:**
 - Name
-- Default quality profile
-- Default language profile
+- Default / Read Only / Preserve Symlinks / Default Monitored toggles
+- Blocked video extensions
 - Path (use with caution)
 
 :::tip[Path validation]
@@ -181,4 +189,4 @@ Removing a root folder from Cinephage doesn't delete the actual files, but Cinep
 
 - [Library Views](library-views) - Browse and filter your library
 - [Adding Content](adding-content) - Add movies and TV shows to your library
-- [Import Existing Files](../use/import-existing-files) - Import your existing media
+- [Import Existing Files](../../use/import-existing-files) - Import your existing media

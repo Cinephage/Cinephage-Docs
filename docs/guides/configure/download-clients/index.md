@@ -36,6 +36,13 @@ Download clients handle the actual downloading of media files. Cinephage connect
 | [SABnzbd](sabnzbd) | Yes | Web UI, categories, scripting, mount mode |
 | [NZBGet](nzbget) | | Lightweight, RSS support |
 
+### Debrid services
+
+| Client | Recommended | Features |
+|--------|-------------|----------|
+| Real-Debrid | | Direct-download debrid acquisition, no dedicated guide yet - configured the same way as other clients under Settings > Integrations > Download Clients |
+| TorBox | | Direct-download debrid acquisition, no dedicated guide yet - configured the same way as other clients under Settings > Integrations > Download Clients |
+
 ## Prerequisites
 
 Before configuring any download client:
@@ -151,7 +158,7 @@ For detailed troubleshooting, see [Troubleshooting downloads](/guides/deploy/tro
 After configuring your download client:
 
 - [Configure indexers](/guides/configure/indexers) to add indexers
-- [Set up quality profiles](/guides/configure/quality-profiles) to control download quality
+- [Set up quality profiles](/guides/configure/quality/quality-profiles) to control download quality
 - [Search and download](/guides/use/search-and-download) to start acquiring content
 
 ## See also

@@ -1,21 +1,22 @@
 ---
 title: Set Up Live TV
 description: Configure Live TV providers, manage channels, and stream Live TV
-sidebar_position: 5
+sidebar_position: 2
 tags: [live-tv, streaming, configuration, guide, stalker, xstream, m3u]
 keywords: [live tv, stalker, xstream, channels]
 ---
 
 # Set up live TV
 
-Cinephage includes comprehensive Live TV support with multi-provider integration, supporting Stalker Portals, XStream Codes, and M3U playlists. This guide covers setting up and managing live TV.
+Cinephage includes comprehensive Live TV support with multi-provider integration, supporting its own built-in Cinephage Live channel catalog, Stalker Portals, XStream Codes, and M3U playlists. This guide covers setting up and managing live TV.
 
 ## Overview
 
-Cinephage supports live TV through three provider types, each with different features and configuration requirements:
+Cinephage supports live TV through four provider types, each with different features and configuration requirements:
 
 | Provider | Type | Authentication | Best For |
 |----------|------|----------------|----------|
+| **Cinephage Live** | Built-in catalog | None | Zero-setup free channels and sports/PPV, no account needed |
 | **Stalker Portal** | MAG/Ministra | MAC Address | Providers using Stalker/Ministra middleware |
 | **XStream Codes** | Live TV API | Username/Password | Providers using XStream Codes panel |
 | **M3U Playlist** | Playlist File | None | Generic Live TV playlists |
@@ -33,6 +34,25 @@ Regardless of provider type, Cinephage provides:
 - Multi-provider mixing (channels from all providers in one lineup)
 
 ## Provider Types Explained
+
+### Cinephage Live
+
+Cinephage's own built-in live channel catalog - a 24/7 channel lineup plus sports/PPV events - served from the Cinephage network with no account or credentials to configure.
+
+**How It Works:**
+- Adding this provider needs no setup beyond enabling it - there's no account, URL, or credential to enter
+- Authenticates using Cinephage's own build identity, not a per-user login
+- Playback URLs are short-lived, channel-bound, and signed - they expire and are re-issued automatically
+
+**Key Features:**
+- No account/credentials required
+- EPG included
+- Category support
+- No archive/catch-up support (live only)
+
+:::note
+Stream playback for this provider depends on Cinephage's hosted live-TV service being reachable; if that service is down, only this provider is affected, not your other configured accounts.
+:::
 
 ### Stalker portal (mag/ministra)
 
@@ -286,6 +306,7 @@ After syncing, view all channels at **Live TV > Channels**:
 - Category filtering
 - Search functionality
 - Status indicators (active/inactive)
+- Country filter (Cinephage Live only) - channels carry a country code in their metadata, and the browser shows a per-country channel count so you can narrow a large catalog to your region
 
 ### Enabling/Disabling channels
 
@@ -380,25 +401,29 @@ EPG provides TV schedule information for your channels.
 
 | Provider | EPG Support | Source |
 |----------|-------------|--------|
+| **Cinephage Live** | Full | Included, synced automatically |
 | **Stalker** | Full | Retrieved from portal automatically |
 | **XStream** | Supported | Via XMLTV URL |
 | **M3U** | Optional | Requires external XMLTV URL |
 
 ### Configuring EPG
 
-#### For Stalker Portals
+#### For Cinephage Live and Stalker Portals
 
-EPG is automatic:
+EPG is automatic - no setup required:
 
-1. Stalker accounts include EPG data
+1. The account's EPG data syncs on its own schedule
 2. Sync channels to fetch EPG mappings
-3. EPG updates automatically with channel sync
-4. Configure refresh interval in settings
+3. EPG updates automatically on the sync schedule below
 
-**EPG Settings:**
+#### EPG sync settings
 
-- **Refresh Interval** - How often to update EPG (default: 6 hours)
-- **Cache Duration** - How long to keep EPG data (default: 24 hours)
+Go to **Live TV > Guide** to see sync status per account (last sync time, next sync time, and any sync error) and adjust the schedule:
+
+- **Sync Interval** - How often to refresh EPG data, 1-168 hours (default: 6 hours)
+- **Retention** - How long to keep past/future program data before pruning, 24-720 hours (default: 48 hours)
+
+Changes apply immediately, without a restart. If a provider's EPG fetch fails (e.g. every scheduled day fails to load for Cinephage Live, or the Stalker/M3U source errors), the account records the error and shows as failed in the status panel instead of silently serving a stale or empty guide.
 
 #### For M3U Playlists
 
@@ -695,5 +720,5 @@ When updating Cinephage:
 ## See Also
 
 - [Understanding the Interface](/getting-started/understanding-interface) - Navigate the Live TV interface
-- [Troubleshooting](../deploy/troubleshooting) - General troubleshooting steps
-- [Configure Subtitles](subtitles) - Set up subtitles for live TV
+- [Troubleshooting](../../deploy/troubleshooting) - General troubleshooting steps
+- [Configure Subtitles](../languages/subtitles) - Set up subtitles for live TV

@@ -20,6 +20,10 @@ See [Authentication](authentication) for auth requirements and API key usage.
 | 🔐     | Authenticated required |
 | 👑     | Admin required         |
 
+:::warning[🔓 is rare in practice, and 🔐 usually means admin-only too]
+A global check in `hooks.server.ts` requires a valid session or API key on every `/api/*` route before it reaches the handler - only `/health`, `/api/health`, `/api/ready`, `/api/radarr/ping`, `/api/sonarr/ping`, and `/api/auth/*` are actually exempt. On top of that, a second gate confines any non-admin session to a small read-only allowlist (discover, TMDB, calendar, library movies/series reads, system status, and self-scoped `/api/user/*` and `/api/requests` routes) - **everything else under `/api/`, including most routes marked 🔐 below, actually requires the admin role**, not just "any authenticated user." See [Authentication](authentication#common-endpoint-patterns) for the exact allowlist. The 🔓/🔐/👑 symbols throughout this table have not been re-audited row-by-row against this - treat none of them as reliable for distinguishing "any session" from "admin only."
+:::
+
 ## System Endpoints
 
 | Method | Endpoint              | Auth | Description                    |
@@ -27,10 +31,19 @@ See [Authentication](authentication) for auth requirements and API key usage.
 | GET    | `/api/health`         | 🔓   | Health check (DB, services)    |
 | GET    | `/api/ready`          | 🔓   | Readiness check for orchestration |
 | GET    | `/api/system/status`  | 🔓   | Background services status     |
+| GET    | `/api/system/github-release` | 🔓 | Latest GitHub release info (update check) |
 
 :::info[Admin Authorization (v0.5.0+)]
 Many endpoints now require admin authorization (👑). Ensure your API key has admin privileges for these endpoints.
 :::
+
+## Radarr/Sonarr compatibility layer
+
+:::info[Dev preview only]
+Not yet in a stable release - available on the `dev` Docker tag only. See [Release History](/support/releases) for channel details.
+:::
+
+Cinephage also exposes a Radarr-compatible API at `/api/radarr` and a Sonarr-compatible API at `/api/sonarr`, mirroring the real Radarr/Sonarr v3 API shape rather than Cinephage's own native API conventions documented below. This is a separate surface for third-party tools (autobrr, Pulsarr, Notifiarr, Overseerr/Jellyseerr) - see [Configure Radarr/Sonarr compatibility](/guides/configure/system/arr-compat) for what's supported and how to enable it.
 
 ## Activity
 
@@ -97,12 +110,18 @@ Many endpoints now require admin authorization (👑). Ensure your API key has a
 
 | Method | Endpoint              | Auth | Description                    |
 | ------ | --------------------- | ---- | ------------------------------ |
-| GET    | `/api/queue`          | 🔓   | List download queue            |
-| GET    | `/api/queue/[id]`     | 🔓   | Get queue item                 |
-| DELETE | `/api/queue/[id]`     | 👑   | Remove from queue              |
-| POST   | `/api/queue/[id]/retry`| 👑  | Retry failed item              |
-| POST   | `/api/queue/cleanup`  | 👑   | Cleanup queue                  |
-| GET    | `/api/queue/events`   | 🔓   | SSE for queue events           |
+| GET    | `/api/queue`          | 🔐   | List download queue            |
+| GET    | `/api/queue/[id]`     | 🔐   | Get queue item                 |
+| PATCH  | `/api/queue/[id]`     | 🔐   | Update queue item              |
+| DELETE | `/api/queue/[id]`     | 🔐   | Remove from queue              |
+| POST   | `/api/queue/[id]/retry`| 🔐  | Retry failed item              |
+| POST   | `/api/queue/clear-failed` | 🔐 | Clear failed queue items  |
+| POST   | `/api/queue/refresh`  | 🔐   | Refresh queue from download clients |
+| POST   | `/api/queue/relink-orphans` | 🔐 | Relink orphaned downloads to queue rows |
+| GET    | `/api/queue/history`  | 🔐   | Download history               |
+| DELETE | `/api/queue/history`  | 🔐   | Clear download history         |
+
+There is no SSE endpoint for queue events specifically - real-time queue updates arrive via `/api/activity/stream`.
 
 ## Indexers
 
@@ -171,6 +190,17 @@ Many endpoints now require admin authorization (👑). Ensure your API key has a
 | POST   | `/api/livetv/portals/[id]/scan`       | 👑   | Trigger portal scan      |
 | GET    | `/api/livetv/portals/[id]/scan/results`| 🔓  | Scan results             |
 | POST   | `/api/livetv/portals/detect`          | 👑   | Detect portal type       |
+
+## Cinephage Network
+
+Config and status for the built-in "Cinephage Streaming" module, which streams content from your local library and resolves VOD sources via the Cinephage network (registers itself as a special-purpose indexer internally).
+
+| Method | Endpoint                              | Auth | Description              |
+| ------ | -------------------------------------- | ---- | ------------------------ |
+| GET    | `/api/cinephage`                      | 👑   | Full subsystem state (config, identity, per-module status) |
+| PUT    | `/api/cinephage/config`               | 👑   | Update config             |
+| POST   | `/api/cinephage/test`                 | 👑   | Test connectivity         |
+| PUT    | `/api/cinephage/modules/[moduleId]`   | 👑   | Enable/disable a module   |
 
 ## Subtitles
 
@@ -267,33 +297,78 @@ The `/api/subtitles/providers/analytics` endpoint response shape has changed:
 | POST   | `/api/monitoring/search/missing`  | 👑   | Search missing           |
 | POST   | `/api/monitoring/search/upgrade`  | 👑   | Search upgrades          |
 
+## Calendar
+
+| Method | Endpoint                  | Auth | Description              |
+| ------ | -------------------------- | ---- | ------------------------ |
+| GET    | `/api/calendar`           | 🔓   | Calendar events for a date range |
+| GET    | `/api/calendar/upcoming`  | 🔓   | Upcoming releases        |
+
+## Reports
+
+| Method | Endpoint                                  | Auth | Description              |
+| ------ | ------------------------------------------ | ---- | ------------------------ |
+| GET    | `/api/reports/[type]`                     | 🔓   | Report rows by type (`unmatched`, `rejected-releases`, `import-failures`, `renaming-failures`) |
+| PATCH  | `/api/reports/[type]`                     | 🔓   | Bulk-update report rows  |
+| GET    | `/api/reports/summary`                    | 🔓   | Summary counts across all report types |
+| GET    | `/api/reports/unmatched-stats`            | 🔓   | Unmatched-files stats    |
+| GET    | `/api/reports/rejected-stats`             | 🔓   | Rejected-release stats   |
+| GET    | `/api/reports/import-failures-stats`      | 🔓   | Import-failure stats     |
+| GET    | `/api/reports/renaming-failures-stats`    | 🔓   | Renaming-failure stats   |
+| POST   | `/api/reports/rejected-releases/[id]/override` | 🔓 | Force-grab a rejected release |
+| POST   | `/api/reports/import-failures/[id]/retry` | 🔓   | Retry a failed import    |
+| POST   | `/api/reports/renaming-failures/[id]/retry` | 🔓 | Retry a failed rename    |
+
+## Storage
+
+| Method | Endpoint                              | Auth | Description              |
+| ------ | -------------------------------------- | ---- | ------------------------ |
+| GET    | `/api/storage/insights`               | 🔓   | Storage insights (large/duplicate/stale items) |
+| GET    | `/api/storage/insights/stream`        | 🔓   | SSE for insight updates  |
+| GET    | `/api/storage/insights/[id]/items`    | 🔓   | Items behind one insight |
+| POST   | `/api/storage/insights/[id]/dismiss`  | 🔓   | Dismiss an insight       |
+| POST   | `/api/storage/insights/[id]/undismiss`| 🔓   | Restore a dismissed insight |
+| POST   | `/api/storage/reconcile`              | 👑   | Reconcile on-disk state with the library |
+
 ## Settings
 
 | Method | Endpoint                          | Auth | Description              |
 | ------ | --------------------------------- | ---- | ------------------------ |
-| GET    | `/api/settings/tmdb`              | 🔓   | Get TMDB settings        |
-| PUT    | `/api/settings/tmdb`              | 👑   | Update TMDB settings     |
-| GET    | `/api/settings/filters`           | 🔓   | Get filter settings      |
-| PUT    | `/api/settings/filters`           | 👑   | Update filter settings   |
-| GET    | `/api/settings/external-url`      | 🔓   | Get external URL         |
+| GET    | `/api/settings/tmdb`              | 👑   | Whether a TMDB API key override is configured |
+| PUT    | `/api/settings/tmdb`              | 👑   | Set TMDB API key override |
+| GET    | `/api/settings/filters`           | 👑   | Get global TMDB discover filters (adult content, vote thresholds, excluded genres) |
+| PUT    | `/api/settings/filters`           | 👑   | Update global TMDB discover filters |
+| GET    | `/api/settings/external-url`      | 👑   | Get external URL         |
 | PUT    | `/api/settings/external-url`      | 👑   | Update external URL      |
+| GET    | `/api/settings/logs/settings`     | 👑   | Get log settings (retention, min level) |
+| PUT    | `/api/settings/logs/settings`     | 👑   | Update log settings      |
+| GET    | `/api/settings/logs/history`      | 👑   | Query historical log entries |
+| DELETE | `/api/settings/logs/history`      | 👑   | Clear log history        |
 | GET    | `/api/settings/logs/stream`       | 👑   | SSE for log stream       |
 | GET    | `/api/settings/logs/download`     | 👑   | Download logs            |
+| POST   | `/api/settings/logs/client-report`| 🔓   | Client-side (browser) error report submission |
+
+The following two settings endpoints are **dev preview only** (not yet in a stable release):
+
+| Method | Endpoint                          | Auth | Description              |
+| ------ | --------------------------------- | ---- | ------------------------ |
+| GET    | `/api/settings/arr-compat`        | 👑   | Get Radarr/Sonarr compatibility toggle |
+| PUT    | `/api/settings/arr-compat`        | 👑   | Enable/disable Radarr/Sonarr compatibility |
+| GET    | `/api/settings/sidecar`           | 👑   | Get sidecar (NFO/artwork) settings |
+| PUT    | `/api/settings/sidecar`           | 👑   | Update sidecar settings  |
 
 ### Backup & restore
 
 | Method | Endpoint                              | Auth | Description              |
 | ------ | ------------------------------------- | ---- | ------------------------ |
-| GET    | `/api/settings/backup`                | 👑   | Create configuration backup |
-| POST   | `/api/settings/restore`               | 👑   | Restore from backup      |
-| GET    | `/api/settings/backup/status`         | 👑   | Backup/restore status    |
+| POST   | `/api/settings/system/backup`         | 👑   | Create configuration backup |
+| PUT    | `/api/settings/system/backup`         | 👑   | Update backup settings   |
+| GET    | `/api/settings/system/db-backup`      | 👑   | Get database backup settings |
+| PUT    | `/api/settings/system/db-backup`      | 👑   | Update database backup settings |
+| POST   | `/api/settings/system/db-backup/run`  | 👑   | Run a database backup now |
+| GET    | `/api/settings/system/db-backup/list` | 👑   | List database backups    |
 
-### User preferences
-
-| Method | Endpoint                              | Auth | Description              |
-| ------ | ------------------------------------- | ---- | ------------------------ |
-| GET    | `/api/settings/user/language`         | 🔐   | Get user language        |
-| PUT    | `/api/settings/user/language`         | 🔐   | Update user language     |
+There is no restore-from-backup endpoint - restoring is done by placing a backup file back into Cinephage's data directory before startup, not through the API.
 
 ### API keys
 
@@ -301,7 +376,14 @@ The `/api/subtitles/providers/analytics` endpoint response shape has changed:
 | ------ | ------------------------------------- | ---- | ---------------------- |
 | GET    | `/api/settings/system/api-keys`       | 👑   | List API keys          |
 | POST   | `/api/settings/system/api-keys`       | 👑   | Generate API keys      |
-| POST   | `/api/settings/system/api-keys/[id]/regenerate`| 👑 | Regenerate key |
+| POST   | `/api/settings/system/api-keys/[id]/regenerate`| 🔐 | Regenerate key (any authenticated user, not admin-only) |
+
+## User
+
+| Method | Endpoint                  | Auth | Description              |
+| ------ | ------------------------- | ---- | ------------------------ |
+| POST   | `/api/user/language`      | 🔐   | Set the current user's UI language |
+| PUT    | `/api/user/language`      | 🔐   | Same as POST              |
 
 ## Root Folders
 
@@ -359,6 +441,15 @@ The `/api/subtitles/providers/analytics` endpoint response shape has changed:
 | POST   | `/api/notifications/mediabrowser/[id]/test`| 👑 | Test connection    |
 | POST   | `/api/notifications/mediabrowser/trigger`| 👑 | Manual refresh     |
 
+### Media server stats
+
+| Method | Endpoint                          | Auth | Description              |
+| ------ | ----------------------------------- | ---- | ------------------------ |
+| GET    | `/api/media-server-stats`         | 🔓   | Watched/library stats from connected media servers |
+| POST   | `/api/media-server-stats/sync`    | 🔓   | Trigger a stats sync     |
+| GET    | `/api/media-server-stats/sync/status`| 🔓 | Sync status            |
+| GET    | `/api/media-server-stats/items`   | 🔓   | Per-item stats           |
+
 ## Usenet (NNTP)
 
 | Method | Endpoint                  | Auth | Description              |
@@ -394,6 +485,14 @@ The `/api/subtitles/providers/analytics` endpoint response shape has changed:
 | GET    | `/api/discover`   | 🔓   | Discover movies/TV       |
 | GET    | `/api/discover/search`| 🔓 | Search TMDB           |
 
+### TMDB proxy
+
+| Method | Endpoint                              | Auth | Description              |
+| ------ | -------------------------------------- | ---- | ------------------------ |
+| GET    | `/api/tmdb/[...path]`                 | 🔓   | Generic TMDB API proxy   |
+| GET    | `/api/tmdb/collection/search`         | 🔓   | Search TMDB collections  |
+| GET    | `/api/tmdb/person/[id]/credits`       | 🔓   | Person credits           |
+
 ## Dashboard
 
 | Method | Endpoint              | Auth | Description              |
@@ -409,13 +508,7 @@ The `/api/subtitles/providers/analytics` endpoint response shape has changed:
 | GET    | `/api/captcha-solver/health`| 👑 | Health status          |
 | DELETE | `/api/captcha-solver/health`| 👑 | Reset stats            |
 | POST   | `/api/captcha-solver/test`| 👑   | Test captcha solving     |
-
-## Rate Limits
-
-| Method | Endpoint          | Auth | Description              |
-| ------ | ----------------- | ---- | ------------------------ |
-| GET    | `/api/rate-limits`| 🔓   | Get rate limit status    |
-| DELETE | `/api/rate-limits`| 🔓   | Clear all rate limiters  |
+| POST   | `/api/captcha-bypass`     | 👑   | FlareSolverr-compatible endpoint (accepts `{url, cmd, maxTimeout}`) so external tools expecting a FlareSolverr instance can point at Cinephage's own captcha solver instead |
 
 ## Logos
 
@@ -429,27 +522,36 @@ The `/api/subtitles/providers/analytics` endpoint response shape has changed:
 
 | Category        | Endpoints |
 | --------------- | --------- |
-| System          | 3         |
+| System          | 4         |
+| Radarr/Sonarr compatibility | separate surface - see [Configure Radarr/Sonarr compatibility](/guides/configure/system/arr-compat) |
 | Activity        | 5         |
 | Library         | 25+       |
 | Search/Download | 2         |
-| Queue           | 6         |
+| Queue           | 10        |
 | Indexers        | 7         |
 | Download Clients| 6         |
 | Live TV         | 30+       |
+| Cinephage Network | 4       |
 | Subtitles       | 20+       |
 | Streaming       | 10+       |
 | Smart Lists     | 9         |
 | Tasks           | 7         |
 | Monitoring      | 5         |
-| Settings        | 12+       |
+| Calendar        | 2         |
+| Reports         | 10        |
+| Storage         | 6         |
+| Settings        | 15+       |
+| User            | 2         |
 | Root Folders    | 6         |
 | Quality/Scoring | 6         |
 | Naming          | 8         |
 | Notifications   | 6         |
+| Media Server Stats | 4      |
 | Usenet          | 7         |
 | Workers         | 5         |
-| **Total**       | **200+**  |
+| Discover/TMDB   | 5         |
+| Captcha Solver/Bypass | 6   |
+| **Total**       | **230+**  |
 
 ## Detailed Endpoint Documentation
 

@@ -148,7 +148,7 @@ If the test fails:
 
 - Check path mappings if Cinephage and Transmission use different paths
 - Verify Cinephage can access the download folder
-- Check Cinephage logs in **Settings > Logs**
+- Check Cinephage logs in **Settings > Monitoring > Logs**
 - Ensure the download directory has correct permissions
 
 ## Additional Transmission settings

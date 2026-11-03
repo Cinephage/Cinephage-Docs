@@ -10,11 +10,11 @@ keywords: [environment variables, configuration, docker, settings]
 
 This reference documents all environment variables available for configuring Cinephage.
 
-For the authoritative template (including newer or optional keys), see the upstream [`.env.example` on the `dev` branch](https://github.com/MoldyTaint/Cinephage/blob/dev/.env.example).
+For the authoritative template (including newer or optional keys), see the upstream [`.env.example` on the `dev` branch](https://github.com/cinephage/cinephage/blob/dev/.env.example).
 
 ## Required Variables
 
-These variables must be set for Cinephage to function correctly:
+`BETTER_AUTH_SECRET` must be set for Cinephage to function correctly. `ORIGIN` is not enforced at startup (it falls back to `localhost` for local bootstrap) but is effectively required once you access Cinephage via an IP address or non-localhost hostname, otherwise CSRF/origin checks will reject requests.
 
 | Variable             | Description                                          | Example                        |
 | -------------------- | ---------------------------------------------------- | ------------------------------ |
@@ -53,6 +53,18 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
   - API keys encrypted with the old secret cannot be recovered
 :::
 
+### Credential encryption key (optional)
+
+Stored credentials (download clients, indexers, subtitle providers, Live TV, metadata API keys, NNTP) are encrypted at rest separately from session/API-key encryption. By default the encryption key is derived from `BETTER_AUTH_SECRET`, so existing installs need no changes. Set a dedicated key instead if you want to rotate credential encryption independently of the auth secret:
+
+| Variable                   | Default                          | Description                                                        |
+| --------------------------- | --------------------------------- | -------------------------------------------------------------------- |
+| `ENCRYPTION_MASTER_KEY`     | derived from `BETTER_AUTH_SECRET` | Dedicated master key for credential encryption                      |
+| `ENCRYPTION_MASTER_KEY_FILE`| -                                  | Path to a file containing the master key (Docker-secret style mounts); used if `ENCRYPTION_MASTER_KEY` isn't set |
+| `ENCRYPTION_PREVIOUS_KEYS`  | -                                  | Comma-separated prior key(s) (`kid:secret` or bare `secret`), tried as fallback during decryption after rotating the current key |
+
+After rotating the master key, run the **Rotate Credential Encryption** task (Settings > Tasks) with the old key listed in `ENCRYPTION_PREVIOUS_KEYS`, then remove that variable.
+
 ## Server Configuration
 
 ### Core server settings
@@ -64,6 +76,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 | `ORIGIN`                      | -         | Trusted origin URL for CSRF protection. Must match your access URL exactly |
 | `BETTER_AUTH_URL`                   | -         | Base URL for authentication callbacks and redirects (optional - falls back to `ORIGIN`) |
 | `BETTER_AUTH_TRUSTED_ORIGINS`       | -         | Additional trusted origins for CORS (comma-separated)                      |
+| `BETTER_AUTH_TRUST_FORWARDED_ORIGINS`| `true`   | Trust `X-Forwarded-*` origin headers from a reverse proxy. Set to `false` to disable if your proxy doesn't set them correctly |
 | `BETTER_AUTH_DISABLE_SECURE_COOKIES`| `false`   | Disable secure cookies (auto-set when `BETTER_AUTH_URL` starts with `http://`) |
 | `PUBLIC_BASE_URL`             | -         | Public-facing URL for generated external links                             |
 
@@ -146,7 +159,7 @@ Set to `1` if you experience permission issues after changing PUID/PGID.
 
 | Variable    | Default | Description                 |
 | ----------- | ------- | --------------------------- |
-| `LOG_LEVEL` | `info`  | Minimum log level to output |
+| `LOG_LEVEL` | `debug` in development, `info` in production | Minimum log level to output |
 
 Valid levels (in order of verbosity):
 
@@ -191,12 +204,6 @@ Workers handle background tasks. These limits control concurrency:
 | `WORKER_CLEANUP_MS`          | `1800000` | How long to keep completed worker logs in memory (ms) |
 | `WORKER_MAX_LOGS`            | `1000`  | Maximum log entries kept per worker instance |
 
-### Process lifecycle
-
-| Variable           | Default | Description                                              |
-| ------------------ | ------- | -------------------------------------------------------- |
-| `SHUTDOWN_TIMEOUT` | `30`    | Seconds to wait for graceful shutdown before force-killing |
-
 ### Tuning workers
 
 **Low-resource systems:**
@@ -230,15 +237,14 @@ environment:
 | `PROXY_MAX_RETRIES`      | `2`                  | Maximum retry attempts for failed segments          |
 | `DEFAULT_PROXY_REFERER`  | `https://videasy.net`| Default referer header for stream requests          |
 
-### Provider circuit breaker
+### Captcha solver browser pool
 
-Circuit breakers prevent repeated failures with streaming providers:
+Cinephage solves Cloudflare/DDoS-Guard challenges with an embedded headless Firefox (Camoufox). Each browser is a full Firefox process, so concurrency is capped:
 
-| Variable                        | Default | Description                                        |
-| ------------------------------- | ------- | -------------------------------------------------- |
-| `PROVIDER_MAX_FAILURES`         | `3`     | Failures before opening circuit                    |
-| `PROVIDER_CIRCUIT_HALF_OPEN_MS` | `30000` | Time before trying provider again (milliseconds)   |
-| `PROVIDER_CIRCUIT_RESET_MS`     | `60000` | Time before fully resetting circuit (milliseconds) |
+| Variable                    | Default  | Description                                                          |
+| ---------------------------- | -------- | ---------------------------------------------------------------------|
+| `CAPTCHA_MAX_BROWSERS`       | `2`      | Maximum concurrent Camoufox browsers (minimum 1)                     |
+| `CAPTCHA_BROWSER_MAX_AGE_MS` | `120000` | Force-close a browser if it lives longer than this many milliseconds |
 
 ## Live TV Configuration
 
@@ -270,12 +276,33 @@ environment:
   - FFPROBE_PATH=/usr/local/bin/ffprobe
 ```
 
+## Data Directories
+
+These are auto-configured for Docker and manual installs; only override if you need custom paths.
+
+| Variable | Docker default | Manual install default | Description |
+| -------- | --------------- | ------------------------ | ------------ |
+| `DATA_DIR` | `/config/data` | `./data` | Database, indexer definitions, caches |
+| `INDEXER_DEFINITIONS_PATH` | `/config/data/indexers/definitions` | `./data/indexers/definitions` | YAML indexer definitions |
+| `INDEXER_CUSTOM_DEFINITIONS_PATH` | `/config/data/indexers/definitions/custom` | `./data/indexers/definitions/custom` | Custom YAML indexer definitions |
+| `EXTERNAL_LISTS_PRESETS_PATH` | `/config/data/external-lists/presets` | `./data/external-lists/presets` | External list presets |
+| `EXTERNAL_LISTS_CUSTOM_PRESETS_PATH` | `/config/data/external-lists/presets/custom` | `./data/external-lists/presets/custom` | Custom external list presets |
+
+The database itself is SQLite, stored at `data/cinephage.db`, and is created automatically on first run.
+
+## Application Mode
+
+| Variable | Default | Description |
+| -------- | ------- | ------------ |
+| `NODE_ENV` | - | Set automatically by npm scripts; usually not set manually |
+| `BODY_SIZE_LIMIT` | `10M` | Maximum request body size. Raised from SvelteKit's 512K default so bulk library imports (up to 5000 jobs per batch) don't get rejected |
+
 ## Complete Docker Compose Example
 
 ```yaml
 services:
   cinephage:
-    image: ghcr.io/moldytaint/cinephage:latest
+    image: ghcr.io/cinephage/cinephage:latest
     container_name: cinephage
     restart: unless-stopped
     ports:
@@ -323,18 +350,18 @@ services:
 | **System**          | `PUID`, `PGID`, `TZ`, `CINEPHAGE_FORCE_RECURSIVE_CHOWN`                                                    |
 | **Logging**         | `LOG_LEVEL`, `LOG_INCLUDE_STACK`, `LOG_SENSITIVE`                                                          |
 | **Workers**         | `WORKER_MAX_*` (8 variables), `WORKER_CLEANUP_MS`, `WORKER_MAX_LOGS`                                       |
-| **Process**         | `SHUTDOWN_TIMEOUT`                                                                                          |
 | **Streaming**       | `PROXY_FETCH_TIMEOUT_MS`, `PROXY_SEGMENT_MAX_SIZE`, `PROXY_MAX_RETRIES`, `DEFAULT_PROXY_REFERER`           |
-| **Circuit Breaker** | `PROVIDER_MAX_FAILURES`, `PROVIDER_CIRCUIT_HALF_OPEN_MS`, `PROVIDER_CIRCUIT_RESET_MS`                      |
+| **Captcha Solver**  | `CAPTCHA_MAX_BROWSERS`, `CAPTCHA_BROWSER_MAX_AGE_MS`                                                        |
 | **Live TV**         | `EPG_STARTUP_GRACE_MS`, `STREAMING_API_KEY_RATE_LIMIT_*`                                                   |
 | **Tools**           | `FFPROBE_PATH`                                                                                             |
+| **Data Directories**| `DATA_DIR`, `INDEXER_DEFINITIONS_PATH`, `INDEXER_CUSTOM_DEFINITIONS_PATH`, `EXTERNAL_LISTS_PRESETS_PATH`, `EXTERNAL_LISTS_CUSTOM_PRESETS_PATH` |
 
 ### Total variables
 
-- **Required:** 2 (`BETTER_AUTH_SECRET`, `ORIGIN`)
-- **Recommended:** 5 (`BETTER_AUTH_URL`, PUID, PGID, TZ, LOG_LEVEL)
-- **Optional:** 25+
-- **Total:** 32+ environment variables
+- **Required:** 1 (`BETTER_AUTH_SECRET`)
+- **Recommended:** 5 (`ORIGIN`, `BETTER_AUTH_URL`, PUID, PGID, TZ)
+- **Optional:** 28+
+- **Total:** 33+ environment variables
 
 For troubleshooting environment variable issues, see [Troubleshooting guide](/guides/deploy/troubleshooting).
 

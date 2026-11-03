@@ -35,10 +35,10 @@ Find and download movies and TV shows from your configured indexers.
 
 ### Enable automatic search
 
-1. Go to **Settings > Tasks**
-2. Enable **Missing Content Search**
-3. Set interval (default: hourly)
-4. Enable **Upgrade Monitoring** (optional)
+1. Go to **Settings > Monitoring > Tasks**
+2. Enable **Missing Content Search** (default interval: daily)
+3. Set interval as needed (minimum 15 minutes)
+4. Enable **Upgrade Search** (optional) to also look for better-quality replacements
 5. Click **Save**
 
 ### Monitor automatic searches
@@ -57,8 +57,7 @@ Check **Activity > History** to see:
 1. Go to **Library > Movies**
 2. Find the movie you want
 3. Click on it to open details
-4. Click **Search** tab
-5. Click **Search** button
+4. Click the **Search** button to open the release search modal
 
 ### Review results
 
@@ -78,11 +77,11 @@ Results appear with columns:
 
 The **Score** column shows how well a release matches your quality profile:
 
-- **Green** (100+): Excellent quality match
-- **Yellow** (50-99): Good quality
-- **Red** (`<50`): Lower quality
+- **Green** (700+): Excellent quality match
+- **Yellow** (400-699): Good quality
+- **Red** (`<400`): Lower quality
 
-Hover over any score to see the detailed breakdown.
+Click a result row to expand it and see the detailed score breakdown.
 
 **Learn more:** See [Search System](/explanation/search-system) for a complete explanation of how scoring works.
 
@@ -94,13 +93,11 @@ Hover over any score to see the detailed breakdown.
 4. Confirm in dialog
 5. Release sent to download client
 
-### Grab best release
+### Auto-grab best release (episodes)
 
-To automatically grab highest-scoring release:
-
-1. Click **Grab Best** button
-2. Cinephage selects best option
-3. No need to review individually
+For TV episodes specifically, there's an **Auto-grab best** action on the episode row that skips
+manual review and grabs the highest-scoring release directly. This option is not available for
+movies, where you review and grab from the results list manually.
 
 ## Part 3: Search TV Episodes
 
@@ -108,90 +105,53 @@ To automatically grab highest-scoring release:
 
 1. Go to **Library > TV**
 2. Click on series
-3. Click **Search** tab
+3. Click the **Search** button on the series
 4. Choose search type:
    - **Missing Episodes** - Only unwatched/missing
    - **All Episodes** - Everything monitored
    - **Selected Seasons** - Specific seasons
-5. Click **Search**
+5. Confirm to start the search
 
 ### Search specific episode
 
 1. Go to series details
 2. Expand season
 3. Find episode
-4. Click episode to open details
-5. Click **Search** tab
-6. Click **Search** button
+4. Click the **Search** button on that episode row
 
-## Part 4: Search from Discover
+## Part 4: Add and Search from Discover
 
-### Search before adding
+Discover pages don't show a release list or quality preview before you add an item - indexer
+search only runs once the item is in your library. When adding, you choose how it should behave:
 
 1. Go to **Discover**
-2. Find movie or series
-3. Click on it
-4. See **Available Releases** count
-5. Click to view release list
-6. Review quality options
-7. Then click **Add to Library** to download
+2. Find the movie or series and open its details
+3. Choose an add option:
+   - **Monitor & Search** - adds the item and immediately starts searching for releases
+   - **Monitor Only** - adds the item and waits for the next scheduled automatic search
+   - **Add Unmonitored** - adds the item without any automatic searching or monitoring
 
-### Preview quality availability
-
-In Discover view:
-
-- **Green badge**: High-quality releases available
-- **Yellow badge**: Medium quality available
-- **Red badge**: Only low quality available
-- **No badge**: Not searched yet
+Choose **Monitor & Search** if you want Cinephage to search right away.
 
 ## Part 5: Advanced Search Options
 
 ### Filter results
 
-In search results, filter by:
-
-**Quality:**
-
-- 2160p (4K)
-- 1080p
-- 720p
-- 480p
-
-**Source:**
-
-- BluRay
-- WEB-DL
-- HDTV
-- DVD
-
-**Custom:**
-
-- Minimum score
-- Maximum age
-- Specific indexers
+Search results have a free-text filter box that matches against the release title (so typing
+`1080p` or `BluRay` narrows the list to releases whose name contains that text), plus a **Show
+Rejected** toggle to reveal releases that were filtered out by your quality profile or Custom
+Formats.
 
 ### Sort results
 
-Click column headers to sort:
+Use the sort control above the results list to sort by:
 
 - **Score** - Best quality first
+- **Seeders** - Most seeders (torrents)
 - **Size** - Smallest or largest
 - **Age** - Newest or oldest
-- **Peers** - Most seeders (torrents)
 
-### Compare releases
-
-To compare similar releases:
-
-1. Select multiple releases (checkbox)
-2. Click **Compare**
-3. See side-by-side comparison:
-   - Resolution
-   - Source
-   - Codec
-   - Audio
-   - Score breakdown
+Click the sort direction button to toggle ascending/descending.
 
 ## Part 6: Handling Search Results
 
@@ -219,9 +179,8 @@ If search returns nothing:
 If overwhelmed with results:
 
 1. **Apply filters:**
-   - Filter by minimum score
-   - Filter by resolution
-   - Filter by source
+   - Use the text filter box to narrow by title (e.g. type a resolution or source keyword)
+   - Turn off **Show Rejected** to hide releases your quality profile already filtered out
 
 2. **Sort appropriately:**
    - Sort by score to see best first
@@ -285,7 +244,7 @@ For the best search results:
 - **Quality over Speed** - Wait for quality releases rather than grabbing first available; use cutoff settings to prevent endless upgrading
 - **Diversify Indexers** - Use multiple indexers for better content coverage and redundancy
 - **Monitor, Don't Just Search** - Enable monitoring on items and let automatic search work in the background
-- **Respect Rate Limits** - Indexers have API limits; use reasonable monitoring intervals (default: hourly)
+- **Respect Rate Limits** - Indexers have API limits; use reasonable monitoring intervals (Cinephage's built-in scheduled search tasks default to anywhere from hourly to weekly depending on the task, and can be tuned per-task under **Settings > Monitoring > Tasks**)
 - **Review Before Grabbing** - Check release names, file sizes, and release groups when selecting manually
 
 **Learn more:** See [Search System](/explanation/search-system) for detailed conceptual guidance on search best practices.
@@ -349,5 +308,5 @@ After searching and downloading:
 - [Search System](/explanation/search-system) - How the search system works
 - [Quality Scoring](/explanation/quality-scoring) - Detailed scoring algorithm
 - [Configure Indexers](../configure/indexers) - Indexer setup guide
-- [Quality Profiles](../configure/quality-profiles) - Quality configuration
+- [Quality Profiles](../configure/quality/quality-profiles) - Quality configuration
 - [Troubleshooting](../deploy/troubleshooting) - Common issues

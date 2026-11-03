@@ -33,7 +33,7 @@ export function buildTraefikDynamicYaml(s: ResolvedStack): string {
 		http: { routers, services }
 	};
 
-	const header = `# Traefik dynamic config — generated example.
+	const header = `# Traefik dynamic config - generated example.
 # Mount as ./traefik/dynamic.yml and point Traefik --providers.file.filename at it.
 # Add TLS / ACME on entrypoints for production (see https://doc.traefik.io/traefik/).
 # Hosts use one label + apex, e.g. cinephage.${apex}

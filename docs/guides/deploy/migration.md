@@ -20,13 +20,13 @@ Current deployment tags:
 
 ## BETTER_AUTH_SECRET Migration
 
-**Applies to:** All users upgrading to v0.7.0 or later.
+**Applies to:** Only users running a pre-release `dev` build from before the first public release
+(`v0.1.0`, April 2026). Every tagged release from **v0.1.0 onward already requires
+`BETTER_AUTH_SECRET`** as an environment variable with no file-based fallback, so if you installed
+any official versioned release you do not need this migration.
 
-Timeline:
-- **v0.5.0** - `BETTER_AUTH_SECRET` became required; the auto-generated `.auth-secret` file was still used as a fallback
-- **v0.7.0** - The `.auth-secret` file fallback was removed entirely; the env var is now the only accepted source
-
-If you have been running any version between v0.5.0 and v0.7.0, you must set the env var before upgrading to v0.7.0+.
+This section is kept for the rare case of migrating a very old pre-`v0.1.0` development install
+that relied on an auto-generated `.auth-secret` file with no `BETTER_AUTH_SECRET` env var set.
 
 ### What changed
 
@@ -88,7 +88,11 @@ If you cannot retrieve the old secret:
 
 ## Volume Mount Migration (/app/data → /config)
 
-**Applies to:** Users upgrading from versions before January 2026 that used `/app/data` mounts.
+**Applies to:** Only users running a pre-release `dev` build from before the first public release
+(`v0.1.0`, April 2026) that used an `/app/data` mount. Every tagged release from **v0.1.0 onward
+already uses the `/config` volume layout**, so most users will never need this. The container
+entrypoint still contains the automatic migration logic described below, for anyone coming from a
+very old pre-`v0.1.0` install.
 
 ### Why this change?
 
@@ -112,7 +116,7 @@ Add the `/config` mount **while keeping** the old data mount temporarily:
 ```yaml
 services:
   cinephage:
-    image: ghcr.io/moldytaint/cinephage:latest
+    image: ghcr.io/cinephage/cinephage:latest
     container_name: cinephage
     restart: unless-stopped
     security_opt:
@@ -169,7 +173,7 @@ Once verified, update `docker-compose.yaml` to remove the legacy data mount:
 ```yaml
 services:
   cinephage:
-    image: ghcr.io/moldytaint/cinephage:latest
+    image: ghcr.io/cinephage/cinephage:latest
     container_name: cinephage
     restart: unless-stopped
     security_opt:
@@ -224,7 +228,7 @@ If the automatic migration fails with permission errors, you need to run as root
 ```yaml
 services:
   cinephage:
-    image: ghcr.io/moldytaint/cinephage:latest
+    image: ghcr.io/cinephage/cinephage:latest
     container_name: cinephage
     restart: unless-stopped
     user: '0:0' # Temporarily run as root
@@ -259,7 +263,7 @@ Remove the `user: '0:0'` line from docker-compose.yaml (container now starts as 
 ```yaml
 services:
   cinephage:
-    image: ghcr.io/moldytaint/cinephage:latest
+    image: ghcr.io/cinephage/cinephage:latest
     container_name: cinephage
     restart: unless-stopped
     # user line removed - entrypoint handles privilege dropping
@@ -320,7 +324,7 @@ sudo chown -R $(id -u):$(id -g) ./config
 ```yaml
 services:
   cinephage:
-    image: ghcr.io/moldytaint/cinephage:latest
+    image: ghcr.io/cinephage/cinephage:latest
     container_name: cinephage
     restart: unless-stopped
     security_opt:
@@ -385,7 +389,10 @@ docker inspect cinephage | grep -A 10 Mounts
 │   ├── cinephage.db
 │   ├── indexers/
 │   │   └── definitions/
-│   └── nzb_cache/
+│   ├── logs/
+│   ├── channel-logos/
+│   ├── external-lists/
+│   └── backups/
 └── cache/
 ```
 
@@ -404,11 +411,11 @@ docker compose up -d
 
 ## Task System Migration (Monitoring → Tasks)
 
-**Applies to:** Users upgrading from versions with separate Monitoring page
+**Applies to:** Users upgrading from v0.13.0 or earlier, which had a separate Monitoring page
 
 ### What changed
 
-- **Monitoring settings page removed** - All monitoring configuration consolidated into **Settings > Tasks**
+- **Monitoring settings page removed** - All monitoring configuration consolidated into **Settings > Monitoring > Tasks**
 - **Unified task registry** - Centralized task definitions with consistent configuration
 - **Task execution history** - All tasks now record detailed per-item activity
 - **Automatic history cleanup** - Old history entries automatically removed after 30 days
@@ -426,7 +433,7 @@ docker compose up -d
 
 **Step 1:** Review your task settings:
 
-1. Go to **Settings > Tasks**
+1. Go to **Settings > Monitoring > Tasks**
 2. Check all enabled tasks and their intervals
 3. Adjust frequencies as needed for your use case
 
@@ -437,7 +444,7 @@ docker compose up -d
 
 **Step 3:** Monitor task history:
 
-1. Go to **Settings > Tasks**
+1. Go to **Settings > Monitoring > Tasks**
 2. Click **View History** on any task
 3. See detailed per-item execution records
 
@@ -451,12 +458,14 @@ docker compose up -d
 
 ## Alpine to Debian Image Migration
 
-**Applies to:** All users upgrading to Camoufox-based Captcha Solver
+**Applies to:** Only users running a pre-release `dev` build from before the first public release
+(`v0.1.0`, April 2026) that still used the old Alpine-based image. Every tagged release from
+**v0.1.0 onward already ships the Debian-based (`node:24-trixie-slim`) image** with Camoufox
+support, so most users will never need this.
 
 ### What changed
 
 - Base image: `node:22-alpine` -> `node:24-trixie-slim` (Debian)
-- Image size: ~180MB → ~220MB
 - New feature: Camoufox browser support for Cloudflare bypass
 
 ### Migration steps
@@ -473,13 +482,13 @@ docker compose pull
 docker compose up -d --force-recreate
 ```
 
-**Step 3:** First startup downloads Camoufox (~80MB):
+**Step 3:** First startup downloads Camoufox:
 
 ```bash
 docker compose logs -f cinephage
 ```
 
-You'll see: `Downloading Camoufox (first run only, ~80MB)...`
+You'll see: `Downloading Camoufox (first run only; large download, may take several minutes)...`
 
 **Step 4:** Remove old environment variable:
 
@@ -488,7 +497,7 @@ If you have `BROWSER_SOLVER_ENABLED` in your `.env`, remove it (no longer used).
 **Step 5:** Configure Captcha Solver:
 
 1. Open Cinephage UI
-2. Go to **Settings > Integrations > Captcha Solver**
+2. Go to **Settings > System > Captcha Solver**
 3. Enable and configure as needed
 
 ### Troubleshooting
@@ -497,10 +506,10 @@ If you have `BROWSER_SOLVER_ENABLED` in your `.env`, remove it (no longer used).
 
 ```bash
 # Try with explicit tag
-docker pull ghcr.io/moldytaint/cinephage:latest
+docker pull ghcr.io/cinephage/cinephage:latest
 
 # Or build locally
-git clone https://github.com/MoldyTaint/cinephage.git
+git clone https://github.com/cinephage/cinephage.git
 cd cinephage
 docker compose build
 ```
@@ -544,8 +553,8 @@ tar -czf cinephage-backup-$(date +%Y%m%d).tar.gz ./config
 **Step 3:** Update `docker-compose.yaml` to use old image:
 
 ```yaml
-# Find stable image tags at: https://github.com/MoldyTaint/cinephage/pkgs/container/cinephage
-image: ghcr.io/moldytaint/cinephage:v1.2.3
+# Find stable image tags at: https://github.com/cinephage/cinephage/pkgs/container/cinephage
+image: ghcr.io/cinephage/cinephage:v0.16.0
 ```
 
 **Step 4:** If rolling back to pre-/config version, restore old data volume mounts:

@@ -151,28 +151,33 @@ Manage NZB streaming:
 
 ### Monitoring tasks
 
-Automated background operations:
+Automated, scheduled background operations. Each has its own configurable interval (with a default and a minimum):
 
 **Task List:**
-1. **Missing Content Search** - Find missing movies/episodes
-2. **Cutoff Unmet Search** - Upgrade below-cutoff items
-3. **Upgrade Search** - Find all quality upgrades
-4. **RSS Sync** - Check indexers for new releases
-5. **Smart List Refresh** - Update dynamic lists
-6. **Subtitle Search** - Find missing subtitles
-7. **Subtitle Upgrade** - Find better subtitles
+1. **Missing Content Search** - Find missing movies/episodes (default: daily)
+2. **Upgrade Search** - Find better-quality releases for existing files (default: weekly)
+3. **New Episode Check** - Search for recently aired episodes of monitored series (default: hourly)
+4. **Cutoff Unmet Search** - Upgrade content below the quality profile cutoff (default: daily)
+5. **Pending Release Processing** - Process releases waiting in the delay profile queue (default: every 15 minutes)
+6. **Smart List Refresh** - Update dynamic Smart Lists (default: hourly)
+7. **Missing Subtitles Search** - Download subtitles for files missing required languages (default: every 6 hours)
+8. **Subtitle Upgrade Search** - Search for better-scoring subtitles (default: daily)
+9. **Library Reconciliation** - Reconcile library/root-folder assignments and heal drift from external changes (default: every 6 hours)
+10. **History Cleanup** - Purge old history entries per the retention setting (default: daily, not user-editable)
+11. **Database Backup** - Back up the SQLite database (default: daily, not user-editable)
 
-**Schedule:** Configurable intervals (minutes to days)
+There is no separate "RSS sync" task - new releases are discovered by the scheduled search tasks above querying indexers directly, not by a distinct feed-polling task.
 
-### Library tasks
+### Maintenance tasks
 
-Maintain library consistency:
+Manually-triggered operations (run on demand from Settings, not on a schedule):
 
 **Operations:**
-- **Library Scan** - Detect new/changed/deleted files
-- **Metadata Refresh** - Update TMDB information
-- **Health Check** - Verify file integrity
-- **Cleanup** - Remove orphaned database entries
+- **Library Scan** - Detect new/changed/deleted files across root folders
+- **Update .strm URLs** - Rewrite `.strm` files after changing the server address, port, or domain
+- **Reprobe .strm Media Info** - Refresh media info for existing `.strm` files
+- **Metadata Refresh** - Update titles, overviews, posters, and other TMDB metadata
+- **Regenerate Sidecar Files** - Rewrite `.nfo`/artwork sidecar files for the whole library (see [Sidecar Files](/guides/configure/system/sidecar-files))
 
 ## Worker Configuration
 
@@ -265,12 +270,13 @@ Scheduled tasks run automatically:
 │                                                              │
 │  Task                    Interval    Next Run    Status     │
 │  ─────────────────────────────────────────────────────────  │
-│  Missing Content         6 hours     14:30       Enabled    │
+│  Missing Content         Daily       14:30       Enabled    │
 │  Cutoff Unmet            Daily       02:00       Enabled    │
 │  Upgrade Search          Weekly      Sun 03:00   Enabled    │
-│  RSS Sync                15 min      12:45       Enabled    │
-│  Smart List Refresh      6 hours     15:00       Enabled    │
-│  Subtitle Search         6 hours     14:45       Enabled    │
+│  New Episode Check       Hourly      12:45       Enabled    │
+│  Pending Release         15 min      12:45       Enabled    │
+│  Smart List Refresh      Hourly      15:00       Enabled    │
+│  Missing Subtitles       6 hours     14:45       Enabled    │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -279,7 +285,7 @@ Scheduled tasks run automatically:
 
 **Access Settings:**
 ```
-**Settings > Tasks**
+**Settings > Monitoring > Tasks**
 ```
 
 **Adjust Intervals:**
@@ -290,13 +296,17 @@ Scheduled tasks run automatically:
 
 **Recommended Intervals:**
 
-| Task | Conservative | Balanced | Aggressive |
-|------|--------------|----------|------------|
-| Missing Content | 12 hours | 6 hours | 1 hour |
-| Cutoff Unmet | Daily | Daily | Every 6 hours |
-| Upgrade Search | Weekly | Weekly | Daily |
-| RSS Sync | 30 min | 15 min | 5 min |
-| Smart List Refresh | 12 hours | 6 hours | 1 hour |
+Cinephage's defaults are shown in the middle column; the minimum allowed interval for most tasks is 15 minutes.
+
+| Task | Conservative | Default | Aggressive |
+|------|--------------|---------|------------|
+| Missing Content | Every 2-3 days | Daily | Every 6 hours |
+| Cutoff Unmet | Every 2-3 days | Daily | Every 6 hours |
+| Upgrade Search | Monthly | Weekly | Daily |
+| New Episode Check | Every 6 hours | Hourly | Every 15 min |
+| Pending Release Processing | 1 hour | 15 min | 15 min (minimum) |
+| Smart List Refresh | 6 hours | Hourly | Every 15 min |
+| Missing Subtitles Search | Daily | Every 6 hours | Hourly |
 
 :::tip[Rate Limiting]
 More frequent tasks may hit indexer rate limits. Start conservative.
@@ -307,7 +317,7 @@ More frequent tasks may hit indexer rate limits. Start conservative.
 View task execution history:
 
 ```
-**Settings > Tasks** > History
+**Settings > Monitoring > Tasks** > History
 ```
 
 **History Shows:**

@@ -44,9 +44,11 @@ If you are familiar with Docker, here is the minimal configuration to get starte
 ```yaml title="docker-compose.yaml"
 services:
   cinephage:
-    image: ghcr.io/moldytaint/cinephage:latest
+    image: ghcr.io/cinephage/cinephage:latest
     container_name: cinephage
     restart: unless-stopped
+    init: true
+    shm_size: 256m
     ports:
       - '3000:3000'
     environment:
@@ -96,10 +98,13 @@ Create a file named `docker-compose.yaml` with the following content:
 ```yaml title="docker-compose.yaml"
 services:
   cinephage:
-    image: ghcr.io/moldytaint/cinephage:latest
+    image: ghcr.io/cinephage/cinephage:latest
     container_name: cinephage
     restart: unless-stopped
     init: true
+    # Headless Firefox (captcha solving) uses /dev/shm; the container default
+    # of 64MB causes crashes/instability.
+    shm_size: 256m
     security_opt:
       - no-new-privileges:true
     ports:
@@ -115,9 +120,10 @@ services:
 
 | Option | Value | Description |
 |--------|-------|-------------|
-| `image` | `ghcr.io/moldytaint/cinephage:latest` | Docker image to use. Use `latest` for stable releases or `dev` for bleeding edge. |
+| `image` | `ghcr.io/cinephage/cinephage:latest` | Docker image to use. Use `latest` for stable releases or `dev` for bleeding edge. |
 | `container_name` | `cinephage` | Name of the container for easier management |
 | `restart` | `unless-stopped` | Automatically restart unless manually stopped |
+| `shm_size` | `256m` | Shared memory for the headless Firefox browser used by the Captcha Solver; the container's 64MB default causes crashes |
 | `ports` | `3000:3000` | Map host port 3000 to container port 3000 |
 | `env_file` | `.env` | Load environment variables from .env file (recommended) |
 | `volumes` | Various | Mount host directories into the container |
@@ -203,7 +209,7 @@ LOG_LEVEL=info
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ORIGIN` | Yes | URL where you access Cinephage |
-| `BETTER_AUTH_URL` | No | Auth callback URL - defaults to ORIGIN if not set |
+| `BETTER_AUTH_URL` | No | Auth callback URL - if unset, falls back to the saved External URL from Settings > System, then localhost |
 | `BETTER_AUTH_SECRET` | Yes | Secret key for session encryption |
 | `PUID` | No* | User ID for file permissions (default: 1000) |
 | `PGID` | No* | Group ID for file permissions (default: 1000) |
@@ -344,7 +350,7 @@ cp -r config config-backup-$(date +%Y%m%d)
 To use a different tag, modify your `docker-compose.yaml`:
 
 ```yaml
-image: ghcr.io/moldytaint/cinephage:dev
+image: ghcr.io/cinephage/cinephage:dev
 ```
 
 ## Troubleshooting

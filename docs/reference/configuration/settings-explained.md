@@ -63,15 +63,27 @@ If not set, Cinephage uses the `BETTER_AUTH_URL` environment variable or infers 
 
 #### Authentication
 
-**Path:** `Settings > General > Security`
+Every `/api/*` route (other than `/api/health`, `/api/ready`, and `/api/auth/*`) requires a valid session or API key - this isn't a toggle, it's always on. Passwords require a minimum of 8 characters, and sessions last 7 days; neither is currently user-configurable.
 
-Configure user authentication settings:
+**Path:** `Settings > System > General`
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Require Authentication** | Force login for all users | Enabled |
-| **Session Duration** | How long users stay logged in | 7 days |
-| **Password Requirements** | Minimum password complexity | 8 characters |
+The General settings page itself covers:
+
+| Setting | Description |
+|---------|-------------|
+| **API Keys** | A full-access main key, plus a separately-scoped media-streaming key (M3U/EPG/Live TV streams only, no library or settings access) |
+| **External URL** | The public URL Cinephage is reached at, used for links sent in notifications and for reverse-proxy/subpath deployments |
+| **Radarr/Sonarr Compatibility** | Enable the `/api/radarr` and `/api/sonarr` API layer - see [Configure Radarr/Sonarr compatibility](/guides/configure/system/arr-compat) |
+
+#### User accounts and roles
+
+**Path:** `Settings > Users`
+
+Cinephage supports multiple accounts: an **admin** role with full access, and a confined **viewer** role (read-only library/discover access, own profile/preferences/sessions, can submit media requests). Admins create invites, manage bans, and can import accounts from a connected media server's user directory. See [Configure User Accounts](/guides/configure/system/user-accounts).
+
+#### Credential encryption
+
+Third-party credentials (download clients, indexers, subtitle providers, Live TV, metadata API keys, NNTP) are encrypted at rest with a key independent of the auth secret, set via the `ENCRYPTION_MASTER_KEY` environment variable (rotatable via `ENCRYPTION_PREVIOUS_KEYS` without re-entering every credential) - see [Environment Variables](environment-variables).
 
 ---
 
@@ -144,11 +156,13 @@ Template used for renaming media files:
 
 | Token | Description | Example |
 |-------|-------------|---------|
-| `{Quality}` | Quality string | "1080p BluRay" |
+| `{Quality}` | Quality string (Source-Resolution) | "BluRay-1080p" |
 | `{Group}` | Release group | "YIFY" |
 | `{Edition}` | Edition tag | "Director's Cut" |
-| `{Codec}` | Video codec | "x264" |
-| `{Audio}` | Audio codec | "DTS" |
+| `{Codec}` | Video codec (alias of `{VideoCodec}`) | "x264" |
+| `{AudioCodec}` | Audio codec | "DTS" |
+
+This is a shortened list - see [Organize Your Files](/guides/use/organize-files) for the complete token reference (resolution/source split out, quality-with-flags, audio channels, HDR, original-language title, and the TV-specific tokens).
 
 :::info[Custom Naming Patterns]
 Custom naming patterns combine multiple tokens to create specific folder and file naming schemes. Example: `{Movie Title} ({Release Year}) [{Quality}][{Codec}]-{Group}`
@@ -185,102 +199,54 @@ Hardlinks are most efficient when the download folder and library are on the sam
 
 ### Quality profiles
 
-**Path:** `Settings > Profiles > Quality`
+**Path:** `Settings > Library > Quality`
 
-Quality profiles define how Cinephage scores and selects releases. Each profile contains:
-
-| Component | Description |
-|-----------|-------------|
-| **Qualities** | Allowed resolutions and sources |
-| **Upgrades** | Whether to search for better versions |
-| **Cutoff** | Quality level to stop upgrading |
-| **Custom Formats** | Bonus/malus scoring rules |
+Cinephage uses an additive **scoring** system, not a tiered "allowed qualities" list - every release gets a point score from its resolution, source, codec, HDR format, audio, and release group, and profiles differ by how they weight those factors and where their upgrade threshold sits, not by a fixed list of permitted qualities. See [Quality Scoring Explained](/explanation/quality-scoring) for how scoring works and [Set Up Quality Profiles](/guides/configure/quality/quality-profiles) for configuring profiles.
 
 #### Built-in Profiles
 
-Cinephage includes four default profiles:
-
-**Quality Profile**
-- Prefers 4K with HDR
-- Upgrades until 2160p BluRay
-- Best for: High-end setups
-
-**Balanced Profile**
-- Prefers 1080p WEB-DL
-- Good quality/size ratio
-- Best for: Most users
-
-**Compact Profile**
-- Prefers 720p/1080p
-- Smaller file sizes
-- Best for: Limited storage
-
-**Streamer Profile**
-- Creates `.strm` files
-- For NZB streaming
-- Best for: Streaming without downloading
+Cinephage ships with four built-in profiles - **Quality**, **Balanced**, **Compact**, and **Streamer** - each with its own format scores, minimum score, and upgrade-until score. See [Set Up Quality Profiles](/guides/configure/quality/quality-profiles) for what each one favors.
 
 #### Custom Profile Properties
 
 | Property | Description | Required |
 |----------|-------------|----------|
 | **Name** | Unique profile identifier | Yes |
-| **Allowed Qualities** | Resolutions and sources permitted | Yes, ordered by priority |
-| **Upgrade Cutoff** | Quality level at which upgrades stop | Yes |
-| **Custom Format Scores** | Bonus/malus scoring rules | Optional |
-| **Upgrades Enabled** | Whether to search for better versions | Yes, default: Enabled |
+| **Format Scores** | Points assigned per resolution/source/codec/HDR/audio/group | Yes |
+| **Minimum Score** | Lowest total score a release must reach to be grabbed | Yes |
+| **Upgrade-Until Score** | Score at which Cinephage stops searching for a better release | Yes |
+| **Upgrades Allowed** | Whether to search for better versions after the initial grab | Yes, default: Enabled |
 
 ### Language profiles
 
-**Path:** `Settings > Profiles > Languages`
+**Path:** `Settings > Library > Media Languages`
 
-Configure language preferences for media and subtitles.
-
-| Setting | Description |
-|---------|-------------|
-| **Preferred Languages** | Audio languages to prefer |
-| **Subtitle Languages** | Subtitle languages to download |
-| **Upgrade Until** | Stop upgrading when this quality reached |
-
-#### Example Language Profile
-
-```yaml
-Name: "English + Spanish Subs"
-Preferred Audio: [English]
-Required Subtitles: [English, Spanish]
-Subtitle Priority: Must have English, prefer Spanish
-```
+A profile sets an audio-language preference, an ordered list of subtitle requirements (language + variant + accessibility), a cutoff rank, a minimum score, and whether upgrades are allowed. Profiles apply at the instance level by default, with per-library and per-item overrides - see [Language Profiles](/guides/configure/languages/language-preferences) and [Configure Subtitles](/guides/configure/languages/subtitles) for the full field reference.
 
 ### Custom formats
 
-**Path:** `Settings > Profiles > Custom Formats`
+**Path:** `Settings > Library > Quality Settings` (**Custom Formats** tab)
 
-Create custom scoring rules based on release attributes.
+Create custom scoring rules based on release attributes. A condition can be set to **Must Contain**, **Must Not Contain**, or **Should Contain** (optional, adds score only if matched), combined with AND/OR logic across multiple conditions.
 
 #### Format Conditions
 
-Match releases based on:
+A condition matches on one of several attribute types, including:
 
-| Type | Description | Example |
-|------|-------------|---------|
-| **Release Title** | Text in release name | Contains "REMUX" |
-| **Resolution** | Video resolution | Equals "2160p" |
-| **Source** | Release source | Is "BluRay" |
-| **Codec** | Video codec | Contains "HEVC" |
-| **Group** | Release group | Is "YIFY" |
-| **HDR** | HDR format | Contains "HDR10" |
+| Type | Example |
+|------|---------|
+| **Release Title** | Contains "REMUX" |
+| **Resolution** | Contains "2160p" |
+| **Source** | Contains "BluRay" |
+| **Codec** | Contains "HEVC" |
+| **Release Group** | Contains "YIFY" |
+| **HDR** | Contains "HDR10" |
+
+This is a shortened list - see [Custom Formats](/guides/configure/quality/custom-formats) for the full condition-type reference (audio codec/channels/Atmos, streaming service, indexer, language, release flags) and worked examples.
 
 #### Scoring
 
-Assign positive or negative scores:
-
-| Score | Effect |
-|-------|--------|
-| **+100** | Strongly prefer |
-| **+50** | Prefer |
-| **+10** | Slight preference |
-| **-10** | Slight avoidance |
-| **-100** | Reject |
+Assign any positive or negative integer score to a format; a profile then decides how much weight to actually give it (see [Quality profiles](#quality-profiles) above). A large negative score (around -1000 or lower) functions as an effective reject, since it drags a release's total score well below any profile's minimum.
 
 :::info[Example: HEVC Preference]
 A custom format matching releases containing "HEVC" or "H.265" with a +50 score prefers more efficient codecs without rejecting other options.
@@ -294,7 +260,7 @@ A custom format matching releases containing "HEVC" or "H.265" with a +50 score 
 
 **Path:** `Settings > Integrations > Download Clients`
 
-Configure connections to download clients for automated downloading.
+Configure connections to download clients for automated downloading. Beyond qBittorrent, SABnzbd, and NZBGet below, Cinephage also supports **Deluge**, **rTorrent**, and **Transmission** - see the [Download Clients](/guides/configure/download-clients) guide for the full list and per-client setup.
 
 #### qBittorrent
 
@@ -396,25 +362,9 @@ Custom YAML indexers must follow the Prowlarr/Jackett indexer definition format.
 
 ### Subtitle providers
 
-**Path:** `Settings > Integrations > Subtitles`
+**Path:** `Settings > Integrations > Subtitle Providers`
 
-Configure sources for automatic subtitle downloads.
-
-#### Available Providers
-
-| Provider | Type | Authentication |
-|----------|------|----------------|
-| **OpenSubtitles** | API | Username/Password |
-| **Subf2m** | Web | None |
-| **Addic7ed** | Web | Username/Password |
-
-#### Provider Settings
-
-| Setting | Description |
-|---------|-------------|
-| **Enabled** | Turn provider on/off |
-| **Credentials** | API key or login |
-| **Rate Limit** | Requests per minute |
+Cinephage ships with 12 supported subtitle providers (OpenSubtitles.com, OpenSubtitles.org, Addic7ed, SubDL, YIFYSubtitles, Gestdown, Subf2m, NapiProjekt, LegendasDivx, BetaSeries, Assrt, and Podnapisi) - each toggled independently and, where required, configured with its own credentials. See [Configure Subtitles](/guides/configure/languages/subtitles) for the full provider table and setup steps.
 
 ### Notifications
 
@@ -424,20 +374,24 @@ Configure media server integrations and notifications.
 
 #### Media Server Connect
 
-| Server | Capability |
-|--------|------------|
-| **Jellyfin** | Library update, playback status |
-| **Emby** | Library update, playback status |
-| **Plex** | Library update |
+This feature connects Cinephage to your media server so it can push library-update notifications directly, rather than waiting on the server's own folder scan.
+
+| Server | Library update | Item deletion via API |
+|--------|-----------------|------------------------|
+| **Jellyfin** | Yes | Yes |
+| **Emby** | Yes | Yes |
+| **Plex** | Yes | No (Plex has no item-deletion API; Cinephage skips this step for Plex servers) |
 
 #### Notification Triggers
 
-Configure when to send notifications:
+Each connected server can be toggled independently for which events trigger a library-update push:
 
-- On Grab (download started)
-- On Import (download completed)
-- On Upgrade (better quality downloaded)
-- On Health Issue
+- **On Import** - a new file was imported into the library
+- **On Upgrade** - an existing file was replaced with a better one
+- **On Rename** - a file was renamed/moved (e.g. after a naming-pattern change)
+- **On Delete** - an item was removed from the library
+
+There is no "On Grab" or "On Health Issue" trigger for this feature - those are separate concepts (Grab is logged to Activity; health issues surface on the Status Page, below).
 
 ---
 
@@ -451,13 +405,21 @@ Configure background monitoring tasks that run automatically.
 
 | Task | Purpose | Default Interval |
 |------|---------|------------------|
-| **Missing Content Search** | Find and download missing episodes/movies | 6 hours |
+| **Missing Content Search** | Find and download missing episodes/movies | Daily (24 hours) |
+| **Upgrade Search** | Search for better quality versions | Weekly (168 hours) |
+| **New Episode Check** | Search for recently aired episodes | Hourly |
 | **Cutoff Unmet Search** | Search for items below quality cutoff | Daily |
-| **Upgrade Search** | Search for better quality versions | Weekly |
-| **Smart List Refresh** | Update dynamic lists from TMDB | 6 hours |
-| **Missing Subtitles** | Search for missing subtitle languages | 6 hours |
-| **Subtitle Upgrade** | Search for better subtitle scores | Daily |
-| **RSS Sync** | Check indexers for new releases | 15 minutes |
+| **Pending Release Processing** | Process releases waiting in the delay profile queue | 15 minutes |
+| **Smart List Refresh** | Update dynamic lists from TMDB | Hourly |
+| **Missing Subtitles Search** | Search for missing subtitle languages | 6 hours |
+| **Subtitle Upgrade Search** | Search for better subtitle scores | Daily |
+| **Library Reconciliation** | Reconcile library/root folder assignments | 6 hours |
+| **Request Sweep** | Expire stale pending media requests, re-drive approvals waiting on a writable target, re-check active requests against library availability, prune read notifications | Hourly |
+| **Metadata Refresh** | Refresh titles, overviews, posters, air dates, and other TMDB metadata for the whole library | Daily (minimum 24h - a full refresh hits TMDB per-episode) |
+| **History Cleanup** | Purge old history entries | Daily |
+| **Database Backup** | Back up the SQLite database | Daily |
+
+There is no "RSS Sync" task. Beyond these scheduled tasks, Cinephage also has manual-only maintenance tasks (Library Scan, Update .strm URLs, Reprobe .strm Media Info, Regenerate Sidecar Files, and others) that you trigger on demand rather than on an interval.
 
 ### Task configuration
 
@@ -488,34 +450,25 @@ View detailed history of task execution:
 
 ## Status Page (v0.5.0+)
 
-**Path:** `Settings > Status`
+**Path:** `Settings > Monitoring > Status`
 
-The unified status page provides a consolidated view of your Cinephage system health, replacing separate maintenance and server-stats pages.
+The unified status page provides a consolidated view of your Cinephage library, replacing separate maintenance and server-stats pages. It has four tabs:
 
-### Storage section
+### Overview
 
-| Metric | Description |
-|--------|-------------|
-| **Total Space** | Total storage across all Root Folders |
-| **Used Space** | Currently used storage |
-| **Free Space** | Available storage |
-| **Root Folder Status** | Per-folder usage and health |
+Storage dashboard (total/used/free space, per-root-folder breakdown, storage insights/forecasting), the manual **Scan Library** / **Sync Media Server Stats** actions, and live scan progress while a scan is running.
 
-### Media servers section
+### Folders
 
-| Metric | Description |
-|--------|-------------|
-| **Server Status** | Connected media servers (Jellyfin, Emby, Plex) |
-| **Last Sync** | When library was last updated |
-| **Connection Health** | Test results per server |
+Per-root-folder detail - usage, validation, and the folder edit/scan actions, pulled out of the Overview tab into their own view.
 
-### Scan/Sync status
+### Libraries
 
-| Metric | Description |
-|--------|-------------|
-| **Last Library Scan** | When library was last scanned |
-| **Scan Progress** | Current scan progress if running |
-| **EPG Sync Status** | Live TV EPG synchronization state |
+Per-library detail (one row per configured library, not per root folder) with the same library-edit actions available under **Settings > Library > Libraries**.
+
+### Media
+
+A searchable, filterable explorer across your entire catalog - filter by media type, resolution, video/audio codec, HDR format, container, root folder, and monitored status. This is a catalog browser, not a media-server connection status indicator - media server connect/sync status lives under **Settings > Integrations > Notifications** instead.
 
 ---
 
@@ -558,33 +511,25 @@ Configure automatic backups via environment variables or scheduled tasks:
 
 ---
 
-## User Preferences (v0.5.0+)
+## Account Profile
 
-**Path:** `Settings > User > Preferences`
+**Path:** `/profile` (via the user avatar menu, not nested under Settings)
 
-Configure personal preferences for your Cinephage user account.
+Cinephage has no built-in media player, so there are no playback preferences (no auto-play, streaming quality, or subtitle-display toggle) - those concerns belong to whichever media server (Jellyfin/Emby/Plex) actually plays your files. The account profile page covers:
 
-### Language preferences
-
-Set your preferred interface and content languages:
-
-| Setting | Description | Options |
-|---------|-------------|---------|
-| **Interface Language** | UI language | English, Spanish, etc. |
-| **Content Language** | Default for media metadata | Based on TMDB languages |
-| **Subtitle Language** | Preferred subtitle language | Any configured language |
+| Section | Contents |
+|---------|----------|
+| **Account Security** | Avatar, display name, member-since date |
+| **Preferences** | Interface Language, "Show username in sidebar" toggle |
+| **Change Password** | Current/new/confirm password |
+| **Sessions** | Active login sessions by device, with per-session and "revoke all others" controls |
+| **Danger Zone** | Delete account (requires current password) |
 
 :::tip[i18n Support]
 Cinephage uses Paraglide JS v2 for internationalization. Interface translations are community-contributed.
 :::
 
-### Playback preferences
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Auto-Play Next Episode** | Automatically play next TV episode | Enabled |
-| **Default Quality** | Preferred streaming quality | Original |
-| **Subtitle Display** | Show subtitles by default | Disabled |
+Account and role management for *other* users (admin vs. viewer, invites, bans) is a separate admin-only area - see [User Accounts](#user-accounts-and-roles) above and [Manage User Accounts](/guides/configure/system/user-accounts).
 
 ---
 
@@ -596,7 +541,7 @@ Configure Live TV provider accounts and streaming settings.
 
 ### Provider accounts
 
-Cinephage supports three provider types:
+Cinephage supports four provider types - **Cinephage Live** (built-in catalog, no account needed), **Stalker Portal**, **XStream Codes**, and **M3U Playlist**. See [Set Up Live TV](/guides/configure/streaming/live-tv) for the full provider comparison and setup steps.
 
 #### Stalker Portal (MAG/Ministra)
 
@@ -642,12 +587,14 @@ Cinephage supports three provider types:
 
 ### EPG settings
 
-Configure Electronic Program Guide behavior:
+Configure Electronic Program Guide behavior under **Live TV > Guide**:
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **EPG Refresh Interval** | How often to update EPG | 6 hours |
-| **Cache Duration** | How long to cache EPG data | 24 hours |
+| Setting | Description | Range | Default |
+|---------|-------------|-------|---------|
+| **Sync Interval** | How often to refresh EPG data | 1-168 hours | 6 hours |
+| **Retention** | How long to keep EPG data before pruning | 24-720 hours | 48 hours |
+
+Changes apply without a restart. Sync failures surface via `lastEpgSyncError` in the status panel rather than silently serving stale data.
 
 ### Portal scanner
 
@@ -669,25 +616,20 @@ The portal scanner tests Stalker portals for working MAC addresses.
 
 ## Captcha Solver
 
-**Path:** `Settings > Integrations > Captcha Solver`
+**Path:** `Settings > System > Captcha`
 
-Configure automatic Cloudflare/challenge solving for protected indexers.
+Configure automatic Cloudflare/challenge solving for protected indexers, using a headless browser.
 
 ### Settings
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Enabled** | Turn solver on/off | Disabled |
-| **Headless** | Run browser in background | Yes |
-| **Timeout** | Max time to solve (seconds) | 60 |
+| Setting | Description | Options | Default |
+|---------|-------------|---------|---------|
+| **Enabled** | Turn the solver on/off | On/Off | On |
+| **Solve Timeout** | Max time to attempt a solve | 30s, 60s, 90s, 2m, 3m | 60s |
+| **Cache Duration** | How long a solved challenge's result is cached | 30m, 1h, 2h, 4h, 8h, 24h | 1 hour |
+| **Proxy URL / Username / Password** | Route the solver's browser traffic through a proxy | - | Not set |
 
-### Statistics
-
-View solver performance:
-
-- Total challenges solved
-- Success rate
-- Average solve time
+A status banner at the top of the page shows the solver's live state: **Initializing**, **Ready**, **Busy**, **Disabled**, or **Browser Not Available** (the headless browser failed to start). A **Clear Cache** action and a **Test Solver** tool (enter a URL, attempt a solve, see the result) are also available on this page - there's no running statistics/success-rate tracking.
 - Failed attempts
 
 :::note[First Run]
@@ -704,32 +646,28 @@ Configure usenet provider connections for NZB streaming.
 
 ### Server configuration
 
-**Required Fields:**
+**Fields:**
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| **Name** | Display name | "UsenetServer" |
-| **Host** | NNTP server address | `news.usenetserver.com` |
-| **Port** | Connection port | `563` (SSL) or `119` |
-| **Username** | Account username | `user123` |
-| **Password** | Account password | `********` |
+| Field | Description | Example | Required? |
+|-------|-------------|---------|------------|
+| **Name** | Display name | "UsenetServer" | Yes |
+| **Host** | NNTP server address | `news.usenetserver.com` | Yes |
+| **Port** | Connection port | `563` (SSL, default) or `119` | Yes |
+| **Username** | Account username | `user123` | No |
+| **Password** | Account password | `********` | No |
 
-**Optional Settings:**
+**Settings:**
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| **Connections** | Concurrent connections | 8 |
+| **Max Connections** | Concurrent connections to this server | 10 |
 | **SSL** | Use encrypted connection | Enabled |
-| **Priority** | Server priority | 1 |
+| **Priority** | Server priority (used for failover order among multiple servers) | 1 |
+| **Enabled** | Turn the server on/off | Enabled |
 
 ### Performance tuning
 
-| Setting | Description | Recommended |
-|---------|-------------|-------------|
-| **Connections** | More = faster | 8-16 |
-| **Cache Size** | Max disk cache | 10 GB |
-| **Cache TTL** | Cache duration | 24 hours |
-| **Prefetch** | Download ahead | Enabled |
+Segment caching and prefetching for NZB streaming are handled adaptively and are not user-configurable settings - there is no Cache Size, Cache TTL, or Prefetch toggle to set. The main per-server lever is **Max Connections**; most providers support at least 10-20 concurrent connections per account, so raising this (within what your plan allows) is the main way to improve streaming throughput.
 
 ---
 
@@ -738,22 +676,22 @@ Configure usenet provider connections for NZB streaming.
 ### Configuration guides
 - [Configure Download Clients](/guides/configure/download-clients) - Download client setup and connection
 - [Set Up Indexers](/guides/configure/indexers) - Indexer configuration and testing
-- [Quality Profiles](/guides/configure/quality-profiles) - Creating and customizing quality profiles
-- [Custom Formats](/guides/configure/custom-formats) - Building custom scoring rules
-- [Delay Profiles](/guides/configure/delay-profiles) - Configuring download delay behavior
-- [Blocklist Management](/guides/configure/blocklist) - Managing blocked releases and indexers
+- [Quality Profiles](/guides/configure/quality/quality-profiles) - Creating and customizing quality profiles
+- [Custom Formats](/guides/configure/quality/custom-formats) - Building custom scoring rules
+- [Delay Profiles](/guides/configure/quality/delay-profiles) - Configuring download delay behavior
+- [Blocklist Management](/guides/configure/quality/blocklist) - Managing blocked releases and indexers
 
 ### Media and integration guides
-- [Root Folders](/guides/configure/root-folders) - Root folders, naming, and organization
-- [Media Servers](/guides/configure/media-servers) - Jellyfin, Emby, and Plex integration
-- [Live TV Setup](/guides/configure/live-tv) - Live TV provider configuration
-- [Subtitles Configuration](/guides/configure/subtitles) - Automatic subtitle downloads
-- [NNTP Servers](/guides/configure/nntp-servers) - Usenet provider setup
-- [NZB Streaming](/guides/configure/nzb-streaming) - Streaming without downloading
-- [Captcha Solver](/guides/configure/captcha-solver) - Cloudflare challenge solving
+- [Root Folders](/guides/configure/library/root-folders) - Root folders, naming, and organization
+- [Media Servers](/guides/configure/streaming/media-servers) - Jellyfin, Emby, and Plex integration
+- [Live TV Setup](/guides/configure/streaming/live-tv) - Live TV provider configuration
+- [Subtitles Configuration](/guides/configure/languages/subtitles) - Automatic subtitle downloads
+- [NNTP Servers](/guides/configure/streaming/nntp-servers) - Usenet provider setup
+- [NZB Streaming](/guides/configure/streaming/nzb-streaming) - Streaming without downloading
+- [Captcha Solver](/guides/configure/system/captcha-solver) - Cloudflare challenge solving
 
 ### System and maintenance
 - [Environment Variables](./environment-variables) - Docker and command-line configuration
-- [Smart Lists](/guides/configure/smart-lists) - Dynamic content lists from TMDB
-- [Settings and Logs](/guides/configure/settings-logs) - System configuration and troubleshooting
+- [Smart Lists](/guides/configure/library/smart-lists) - Dynamic content lists from TMDB
+- [Settings and Logs](/guides/configure/system/settings-logs) - System configuration and troubleshooting
 - [Backup and Restore](/guides/deploy/backup-restore) - Data protection procedures

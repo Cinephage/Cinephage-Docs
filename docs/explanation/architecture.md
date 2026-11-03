@@ -83,6 +83,10 @@ RESTful API endpoints handle all data operations:
 - API key support for external access
 - Rate limiting for protection
 
+**Radarr/Sonarr-compatible API:**
+
+Alongside its native REST API, Cinephage exposes a compatibility layer under `/api/radarr` and `/api/sonarr` that speaks the Radarr v3 / Sonarr v3 API dialect. This lets tools built for Radarr/Sonarr (request managers like Overseerr/Seerr/Pulsarr, notification tools, etc.) talk to Cinephage without modification. See [Arr Compatibility API](/guides/configure/system/arr-compat) for details.
+
 ### 3. Services layer
 
 **Business Logic**
@@ -164,6 +168,7 @@ Cinephage integrates with numerous external services:
 - Jellyfin notifications
 - Emby notifications
 - Plex notifications
+- Optional Kodi-style `.nfo`/artwork sidecar files written alongside imports, so `.strm`-based libraries have metadata media servers can read without probing the stream (see [Sidecar Files](/guides/configure/system/sidecar-files))
 
 ### 6. Background services
 
@@ -179,17 +184,15 @@ Long-running background processes:
 
 **Key Services:**
 
-| Service               | Purpose                     | Schedule     |
-| --------------------- | --------------------------- | ------------ |
-| `LibraryScheduler`    | Periodic library scans      | Configurable |
-| `DownloadMonitor`     | Queue monitoring and import | Real-time    |
-| `MonitoringScheduler` | Automated searches          | Configurable |
-| `ExternalIdService`   | TMDB ID caching             | Periodic     |
-| `SubtitleScheduler`   | Subtitle searching          | Configurable |
-| `SubtitleSyncService` | Native subtitle sync engine | On-demand    |
-| `EpgScheduler`        | EPG data updates            | Configurable |
-| `CaptchaSolver`       | Cloudflare bypass           | On-demand    |
-| `MediaBrowserNotifier`| Jellyfin/Emby/Plex updates  | Event-driven |
+| Service                | Purpose                                                                                   | Schedule     |
+| ----------------------- | ------------------------------------------------------------------------------------------- | ------------ |
+| `MonitoringScheduler`   | Single scheduler driving all scheduled tasks (missing/upgrade/cutoff-unmet search, new episode checks, subtitle search/upgrade, smart list refresh, library reconciliation, history cleanup, DB backup) | Configurable per task |
+| `DownloadMonitorService`| Queue monitoring and import                                                                | Real-time    |
+| `ExternalIdService`     | TMDB ID caching                                                                            | Periodic     |
+| `SubtitleSyncService`   | Native subtitle sync engine                                                                | On-demand    |
+| `EpgScheduler`          | EPG data updates                                                                           | Configurable |
+| `CaptchaSolver`         | Cloudflare bypass                                                                          | On-demand    |
+| `MediaBrowserNotifier`  | Jellyfin/Emby/Plex updates                                                                 | Event-driven |
 
 ### 7. Worker system
 
@@ -333,11 +336,11 @@ User-configurable via UI:
 
 **YAML Definitions**
 
-Custom indexer definitions:
+Indexer definitions (Cardigann-style YAML, one file per site):
 
-- Stored in database
-- Editable via UI
-- Hot-reloadable
+- Loaded from YAML files on disk (bundled definitions plus an optional custom definitions directory)
+- Cached in memory and reloadable without restarting Cinephage
+- Indexer *instances* (credentials, priority, category mappings) are configured via the UI and stored in the database; the definitions themselves are files, not database rows
 
 ## Scalability Considerations
 

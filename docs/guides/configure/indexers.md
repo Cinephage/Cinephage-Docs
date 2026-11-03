@@ -1,5 +1,5 @@
 ---
-title: Configure Indexers
+title: Indexers
 description: Add indexers using YAML-based indexer definitions
 sidebar_position: 2
 tags: [indexers, torrent, usenet, streaming, yaml, configuration, guide]
@@ -24,9 +24,9 @@ Add indexers (indexers) so Cinephage can search for and find media releases.
 
 Cinephage uses a **YAML-only** indexer architecture. All indexer configurations are defined in YAML files, providing flexibility and making it easy to add custom indexers. Native TypeScript indexer implementations have been replaced by this unified YAML-based system.
 
-### Dynamic capability discovery
+### Capability declaration
 
-When adding a Newznab or Torznab indexer, Cinephage automatically fetches the indexer's capabilities at `/api?t=caps` to determine supported search parameters. This ensures proper query construction and filtering.
+Built-in and custom YAML definitions declare their capabilities (supported search modes, category IDs, etc.) statically in a `caps:` section. The exception is a user-added **Torznab** indexer: when you add or test one, Cinephage auto-discovers the correct `/api` endpoint from the base URL you enter and fetches live capabilities from its `?t=caps` endpoint, so the right search parameters are used automatically.
 
 ### Supported protocols
 
@@ -91,61 +91,50 @@ Click **Save** to add the indexer.
 
 Torznab is a Newznab-compatible API for torrents, typically provided by Jackett or Prowlarr.
 
-### Option a: using Jackett
+### Option a: importing from Jackett or Prowlarr
 
-If you have Jackett running:
+If you already manage indexers in Jackett or Prowlarr, Cinephage can import them directly rather than adding each tracker by hand:
 
-1. Open Jackett web UI
-2. Add your desired trackers to Jackett
-3. Copy the **Torznab Feed** URL for a tracker
-4. In Cinephage, add indexer:
-   - Select **Torznab** type
-   - Paste the Jackett base URL - Cinephage will auto-discover the Torznab feed endpoint
-   - Add Jackett API key
+1. Go to **Settings > Integrations > Indexers**
+2. Click **Connect Jackett** (or **Connect Prowlarr**) near the top of the page
+3. Enter the connection details:
+   - **Base URL** of your Jackett/Prowlarr instance
+   - **API Key** from Jackett/Prowlarr
+4. Once connected, Cinephage lists the trackers configured in Jackett/Prowlarr - select the ones to import
+5. Each imported tracker becomes its own Cinephage indexer entry, using the shared Jackett/Prowlarr connection under the hood
 
-:::tip[URL Auto-Discovery]
-When you enter a Torznab base URL, Cinephage automatically discovers the correct feed endpoint. You don't need to manually construct the full Torznab feed path.
+:::tip[Adding an individual Jackett tracker manually]
+You can also add a single Jackett-backed tracker without the import flow: select **Jackett** as the indexer type, then enter your Jackett **API Key** and the tracker's **Tracker ID** (the short ID Jackett uses for that indexer, e.g. `1337x`).
 :::
 
-### Option b: direct torrent indexer
+### Option b: generic Torznab server
 
-For public torrent sites, use a YAML definition.
+For a Torznab-compatible server that isn't Jackett or Prowlarr (or to add one of theirs manually instead of importing it):
 
-#### Example: Adding 1337x
+1. Go to **Settings > Integrations > Indexers**
+2. Click **Add Indexer** and select the **Torznab** type
+3. Enter the server's base URL and API key
+
+:::tip[URL Auto-Discovery]
+You don't need to enter the full `/api` feed path. When you click **Test** or **Save**, Cinephage probes common Torznab endpoint paths from the base URL you entered, resolves the correct one, and fetches live capabilities from it (`?t=caps`) to determine supported search parameters and categories.
+:::
+
+### Option c: built-in torrent indexer
+
+Cinephage ships with 40+ built-in YAML definitions for public and private torrent sites (including 1337x, RuTracker, BT4G, Kinozal, Milkie, nCore, PassThePopcorn, Nebulance, TorrentLeech, Aither, Blutopia, and others). These appear directly in the indexer picker - there's no need to write YAML by hand for supported sites:
 
 1. Go to **Settings > Integrations > Indexers**
 2. Click **Add Indexer**
-3. Select **YAML Definition**
-4. Use this template:
-
-```yaml
-name: 1337x
-protocol: torrent
-categories:
-  - movies
-  - tv
-enabled: true
-priority: 25
-settings:
-  baseUrl: https://1337x.to
-  search:
-    path: /search/{{query}}/1/
-    selectors:
-      rows: tr
-      title: .coll-1 a:nth-child(2)
-      magnet: .coll-1 a[href^="magnet:"]
-      size: .coll-4
-      seeders: .coll-2
-      leechers: .coll-3
-```
-
-5. Click **Validate** to check the YAML syntax
-6. Click **Test** to verify it works
-7. Click **Save**
+3. Select the site (e.g. **1337x**) from the indexer picker
+4. Fill in any settings the definition requires (most public trackers need none; private trackers typically need an API key or cookie)
+5. Click **Test** to verify it works
+6. Click **Save**
 
 ## Part 3: Add a Streaming Indexer
 
-For STRM file sources:
+For STRM file sources not covered by a built-in definition, or any tracker without a shipped YAML definition, you write a custom YAML definition file rather than pasting YAML into the UI - there is no in-app YAML editor. Place the file in Cinephage's custom indexer definitions directory (`data/indexers/definitions/custom/` by default, overridable with the `INDEXER_CUSTOM_DEFINITIONS_PATH` environment variable) and restart Cinephage so it's picked up. It then appears in the indexer picker like any built-in definition.
+
+Example streaming definition:
 
 ```yaml
 name: My Streaming Source
@@ -160,49 +149,6 @@ settings:
   apiKey: your-api-key
   timeout: 30
 ```
-
-## Part 4: Built-in Indexers (v0.5.0+)
-
-Cinephage includes several built-in indexers that require minimal configuration:
-
-### Kinozal
-
-Russian torrent tracker with extensive movie and TV content.
-
-**Setup:**
-1. Go to **Settings > Integrations > Indexers**
-2. Click **Add Indexer**
-3. Select **Kinozal** from the dropdown
-4. Configure:
-   - **Name**: `Kinozal`
-   - **Priority**: `20`
-   - **Categories**: Movies, TV
-5. Click **Test** and **Save**
-
-:::tip[Kinozal Features]
-- Supports IMDB ID search for accurate matching
-- Extensive Russian and international content
-- Good for hard-to-find titles
-:::
-
-### Milkie.cc (private tracker)
-
-Private torrent tracker with high-quality releases.
-
-**Setup:**
-1. Go to **Settings > Integrations > Indexers**
-2. Click **Add Indexer**
-3. Select **Milkie** from the dropdown
-4. Configure:
-   - **Name**: `Milkie`
-   - **API Key**: Your Milkie API key
-   - **Priority**: `15`
-   - **Categories**: Movies, TV
-5. Click **Test** and **Save**
-
-:::warning[Private Tracker]
-Milkie.cc requires an account and API key. Category IDs are automatically normalized to tracker-native mapping.
-:::
 
 ## Part 4: Configure Indexer Priority
 
@@ -258,6 +204,8 @@ If no results appear:
 - Test individual indexer connections
 
 ## YAML Indexer Reference
+
+Custom definitions are plain YAML files dropped into the custom definitions directory described above (not entered through the UI). The structure below is illustrative of the general shape; check an existing built-in definition under `data/indexers/definitions/` for the exact schema before writing your own.
 
 ### Required fields
 
@@ -389,13 +337,15 @@ Test indexers periodically:
 - Rotate keys periodically
 - Monitor account usage
 
+Third-party indexer credentials (API keys, cookies) are encrypted at rest in Cinephage's database.
+
 ## Next Steps
 
 Now that indexers are configured:
 
-- [Set Up Quality Profiles](quality-profiles) to filter results
+- [Set Up Quality Profiles](quality/quality-profiles) to filter results
 - [Search and Download](../use/search-and-download) to find content
-- [Configure Subtitles](subtitles) for multi-language support
+- [Configure Subtitles](languages/subtitles) for multi-language support
 
 ## See Also
 

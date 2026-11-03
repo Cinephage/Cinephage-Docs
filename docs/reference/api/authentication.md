@@ -32,17 +32,18 @@ Cinephage uses **Better Auth** for authentication with session-based login and A
 | ------------- | ---------------- |
 | Duration      | 7 days           |
 | Refresh       | Every 24 hours   |
-| Cookie Name   | `cinephage_session` |
+| Cookie Name   | `cinephage.session_token` (prefix changes to `__Secure` when served over HTTPS) |
 | HttpOnly      | Yes              |
 | SameSite      | Lax              |
 
-### Single admin architecture
+### Multi-user accounts
 
-Cinephage uses a single-administrator model:
+Cinephage supports multiple accounts as of v0.18.0, with two roles:
 
-- First user registration becomes the admin
-- Additional registrations are disabled after setup
-- Only one user account exists per installation
+- **Admin** (`role: admin`) - the first registered user; full access to every endpoint
+- **User/viewer** (`role: user`) - confined to a read-only allowlist (discover, TMDB, calendar, library reads, system status) plus self-scoped endpoints for their own profile, sessions, preferences, avatar, and media requests; everything else under `/api/` returns 403
+
+A banned account is blocked regardless of role. Additional accounts are created via admin-issued invites, or by importing accounts from a connected media server's user directory.
 
 ## API Key Authentication
 
@@ -55,12 +56,18 @@ Cinephage uses a single-administrator model:
 
 ### Streaming API key permissions
 
-| Allowed                      | Denied                       |
-| ---------------------------- | ---------------------------- |
-| `/api/livetv/*`              | `/api/library/*`             |
-| `/api/streaming/*`           | `/api/settings/*`            |
-| `/api/livetv/playlist.m3u`   | `/api/indexers/*`            |
-| `/api/livetv/epg.xml`        | Admin-only operations        |
+A streaming-scoped key is only ever checked against a fixed allowlist of playback routes - it never resolves a login session on any other endpoint, so every other route treats it as unauthenticated (401). It isn't a permissions grant layered on top of a session.
+
+| Allowed (streaming-scoped routes) |
+| ---------------------------------- |
+| `/api/livetv/playlist.m3u`         |
+| `/api/livetv/epg.xml`              |
+| `/api/livetv/stream/*`             |
+| `/api/streaming/session/*`         |
+| `/api/streaming/usenet/*`          |
+| `/api/streaming/library/*`         |
+
+A **Main API Key** also works on all of the above (it's tried as a streaming-permission key first, falling back to a full-access check), in addition to the rest of the API.
 
 ### Using API keys
 
@@ -105,11 +112,13 @@ API keys are encrypted at rest:
 
 ## Rate Limiting
 
+Session cookies and the Main API Key are not subject to a built-in request-count limit. Only the Streaming API Key and unauthenticated requests are throttled - see [Rate Limiting](rate-limiting) for the full policy, including the separate per-IP limiter applied to unauthenticated requests.
+
 ### API key rate limits
 
 | Key Type         | Window     | Max Requests |
 | ---------------- | ---------- | ------------ |
-| Streaming API    | 1 hour     | 10,000       |
+| Streaming API    | 1 hour (default) | 10,000 (default) |
 
 Configure via environment variables:
 
@@ -145,19 +154,32 @@ Configure via environment variables:
 
 ### Common endpoint patterns
 
-**Public (No Auth):**
-- `/api/health`
-- `/api/ready`
-- Most GET endpoints
+A global check in `hooks.server.ts` requires a valid session or API key (`event.locals.user`) on every `/api/*` route before it even reaches the route handler, then a second central gate restricts any non-admin ("viewer") session to a fixed allowlist of read-only paths - everything else under `/api/` is admin-only regardless of whether the route handler itself calls `requireAdmin`. Banned users are blocked everywhere.
 
-**Authenticated (requireAuth):**
-- `/api/library/*` (read operations)
-- `/api/search`
+**Public (no auth):**
+- `/health`, `/api/health`, `/api/ready`
+- `/api/radarr/ping`, `/api/sonarr/ping` (real Radarr/Sonarr's own health check is unauthenticated)
+- `/api/auth/*` (sign-in, sign-up, session endpoints)
+- `/api/settings/logs/client-report` (POST) - crash reports can fire before login
 
-**Admin Only (requireAdmin):**
+**Viewer-allowed (non-admin sessions, GET/HEAD only unless noted):**
+- `/api/discover/*`, `/api/tmdb/*`, `/api/calendar/*`
+- `/api/library/movies/*`, `/api/library/series/*` (reads)
+- `/api/system/status`
+- `/api/requests` and `/api/requests/*` (own requests: create, read, cancel)
+- Self-scoped `/api/user/*` routes - language, sessions, media-server link, preferences, avatar, notifications
+
+**Admin only (everything else under `/api/`):**
 - `/api/settings/*`
-- `/api/indexers/*` (create/update/delete)
-- `/api/download-clients/*` (create/update/delete)
+- `/api/indexers/*`, `/api/download-clients/*` (including reads - not just writes)
+- `/api/radarr/*`, `/api/sonarr/*` (except the `/ping` routes above)
+- Any other `/api/*` route not in the viewer allowlist
+
+### Authentication methods accepted per route
+
+- Most `/api/*` routes: session cookie, or a full-access API key via the `x-api-key` header.
+- `/api/radarr/*` and `/api/sonarr/*` additionally accept the full-access key as an `apikey` or `api_key` query parameter, since arr-compatible clients (e.g. Jellyseerr/Overseerr) send it that way for Radarr/Sonarr connections. Query-string credentials are not accepted anywhere else.
+- The streaming-scoped routes listed above never resolve a session at all - only a streaming-scoped or full-access API key (header or query param) is checked.
 
 ## Environment Variables
 

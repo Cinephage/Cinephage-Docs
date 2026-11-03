@@ -1,7 +1,7 @@
 ---
 title: Settings - System
 description: Configure API keys and external URL for Cinephage
-sidebar_position: 21
+sidebar_position: 4
 tags: [settings, api-keys, external-url, configuration, guide]
 keywords: [settings, api keys, external url, system]
 ---
@@ -187,11 +187,11 @@ cinephage.example.com {
 | GET    | `/api/settings/system/api-keys`       | 👑   | List API keys          |
 | POST   | `/api/settings/system/api-keys`       | 👑   | Generate API keys      |
 | POST   | `/api/settings/system/api-keys/[id]/regenerate`| 👑 | Regenerate key |
-| GET    | `/api/settings/external-url`          | 🔓   | Get external URL       |
+| GET    | `/api/settings/external-url`          | 👑   | Get external URL       |
 | PUT    | `/api/settings/external-url`          | 👑   | Update external URL    |
 
 ## See Also
 
 - [Authentication](/reference/api/authentication) - Full auth documentation
 - [Environment Variables](/reference/configuration/environment-variables) - Configuration
-- [Media Servers](media-servers) - Connect Jellyfin/Plex/Emby
+- [Media Servers](../streaming/media-servers) - Connect Jellyfin/Plex/Emby

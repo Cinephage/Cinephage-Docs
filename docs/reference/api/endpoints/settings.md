@@ -10,17 +10,21 @@ keywords: [api, settings, configuration, system, endpoints]
 
 Endpoints for managing system settings and configuration.
 
+:::info
+There is no generic `GET /api/settings` (list-all) or `GET/PUT /api/settings/:key` endpoint - settings are entirely per-category, each with its own route and shape (`/api/settings/tmdb`, `/api/settings/filters`, `/api/settings/arr-compat`, etc). The full list of settings categories is in the [API endpoints overview](/reference/api/endpoints-overview#settings).
+:::
+
 ## Authentication
 
-Most settings endpoints require admin authorization.
+Nearly all settings endpoints (both GET and PUT) require admin authorization - settings are considered sensitive configuration, not general read access.
 
 | Endpoint | Auth Level |
 |----------|------------|
-| GET `/api/settings/*` | Admin (most) |
-| PUT `/api/settings/*` | Admin |
-| GET `/api/health` | Public |
-| GET `/api/ready` | Public |
-| GET `/api/system/status` | Public |
+| `/api/settings/*` | Admin (all, with the noted exception below) |
+| `POST /api/settings/logs/client-report` | Public (browser error reporting; explicitly exempted from the global auth gate so it can fire pre-login) |
+| `GET /api/health` | Public |
+| `GET /api/ready` | Public |
+| `GET /api/system/status` | Any session/key (viewer or admin) - requires login, just not the admin role |
 
 ---
 
@@ -36,52 +40,27 @@ GET /api/health
 
 | Code | Description |
 |------|-------------|
-| 200 | Healthy |
-| 503 | Unhealthy (one or more services failing) |
+| 200 | Healthy or starting |
+| 503 | Unhealthy (a dependency check failed) |
 
 ### Response schema
 
 ```json
 {
-  "status": "string",
+  "status": "healthy | starting | unhealthy",
   "version": "string",
+  "timestamp": "string",
+  "runtime": {
+    "uptimeSeconds": "number",
+    "servicesStarted": "boolean"
+  },
   "checks": {
     "database": {
-      "status": "string",
-      "responseTime": "number"
-    },
-    "downloadClients": {
-      "status": "string",
-      "clients": [
-        {
-          "id": "string",
-          "name": "string",
-          "status": "string"
-        }
-      ]
-    },
-    "indexers": {
-      "status": "string",
-      "enabledCount": "integer",
-      "totalCount": "integer"
+      "status": "healthy | unhealthy",
+      "latencyMs": "number"
     }
-  },
-  "timestamp": "string"
+  }
 }
-```
-
-### Status values
-
-| Status | Description |
-|--------|-------------|
-| `healthy` | Service is functioning normally |
-| `degraded` | Service is working with issues |
-| `unhealthy` | Service is not functioning |
-
-### Example request
-
-```bash
-curl http://localhost:3000/api/health
 ```
 
 ### Example response
@@ -89,29 +68,10 @@ curl http://localhost:3000/api/health
 ```json
 {
   "status": "healthy",
-  "version": "2.1.0",
-  "checks": {
-    "database": {
-      "status": "healthy",
-      "responseTime": 15.2
-    },
-    "downloadClients": {
-      "status": "healthy",
-      "clients": [
-        {
-          "id": "c10e8400-e29b-41d4-a716-446655440030",
-          "name": "qBittorrent",
-          "status": "healthy"
-        }
-      ]
-    },
-    "indexers": {
-      "status": "healthy",
-      "enabledCount": 5,
-      "totalCount": 8
-    }
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
+  "version": "0.17.0",
+  "timestamp": "2026-09-15T10:30:00Z",
+  "runtime": { "uptimeSeconds": 3600, "servicesStarted": true },
+  "checks": { "database": { "status": "healthy", "latencyMs": 2 } }
 }
 ```
 
@@ -119,7 +79,7 @@ curl http://localhost:3000/api/health
 
 ## Readiness check
 
-Returns whether the application is ready to accept traffic.
+Returns whether the application is ready to accept traffic (database reachable and background services started).
 
 ```
 GET /api/ready
@@ -136,8 +96,13 @@ GET /api/ready
 
 ```json
 {
-  "ready": "boolean",
-  "timestamp": "string"
+  "status": "ready | starting",
+  "version": "string",
+  "checks": {
+    "database": "ready | starting",
+    "servicesStarted": "ready | starting",
+    "servicesReady": "ready | starting"
+  }
 }
 ```
 
@@ -145,7 +110,7 @@ GET /api/ready
 
 ## System status
 
-Returns detailed status of background services.
+Returns the status of all background services - useful for monitoring startup progress.
 
 ```
 GET /api/system/status
@@ -155,58 +120,14 @@ GET /api/system/status
 
 ```json
 {
+  "success": "boolean",
+  "ready": "boolean",
+  "version": "string",
   "services": [
     {
       "name": "string",
       "status": "string",
-      "lastRun": "string",
-      "nextRun": "string",
-      "uptime": "number"
-    }
-  ],
-  "timestamp": "string"
-}
-```
-
-### Service status values
-
-| Status | Description |
-|--------|-------------|
-| `pending` | Service not yet started |
-| `starting` | Service is initializing |
-| `ready` | Service is running normally |
-| `error` | Service encountered an error |
-
----
-
-## List settings
-
-Returns all system settings.
-
-```
-GET /api/settings
-```
-
-### Response codes
-
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
-
-### Response schema
-
-```json
-{
-  "settings": [
-    {
-      "key": "string",
-      "value": "any",
-      "type": "string",
-      "category": "string",
-      "description": "string",
-      "updatedAt": "string"
+      "error": "string (only present if the service errored)"
     }
   ]
 }
@@ -214,98 +135,9 @@ GET /api/settings
 
 ---
 
-## Get setting
-
-Returns a specific setting value.
-
-```
-GET /api/settings/:key
-```
-
-### Path parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| key | string | Setting key |
-
-### Response codes
-
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
-| 404 | Setting not found |
-
-### Response schema
-
-```json
-{
-  "key": "string",
-  "value": "any",
-  "type": "string",
-  "category": "string",
-  "description": "string",
-  "updatedAt": "string"
-}
-```
-
----
-
-## Update setting
-
-Updates a system setting.
-
-```
-PUT /api/settings/:key
-```
-
-### Path parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| key | string | Setting key |
-
-### Request body schema
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| value | any | Yes | New setting value |
-
-### Response codes
-
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 400 | Invalid value |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
-| 404 | Setting not found |
-
-### Response schema
-
-```json
-{
-  "success": "boolean",
-  "key": "string",
-  "value": "any",
-  "updatedAt": "string"
-}
-```
-
-### Example request
-
-```bash
-curl -X PUT \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: cinephage_your_key_here" \
-  -d '{"value": true}' \
-  http://localhost:3000/api/settings/autoUnmonitorPreviouslyDownloadedMovies
-```
-
----
-
 ## TMDB settings
+
+Cinephage ships with a bundled TMDB key by default; this endpoint only manages an optional user-supplied override, not a full TMDB configuration surface (there's no language/certification/cache settings here - those live in [filter settings](#filter-settings) or elsewhere).
 
 ### Get TMDB settings
 
@@ -317,12 +149,8 @@ GET /api/settings/tmdb
 
 ```json
 {
-  "apiKey": "string",
-  "language": "string",
-  "certificationCountry": "string",
-  "useSsl": "boolean",
-  "cacheEnabled": "boolean",
-  "cacheTtl": "integer"
+  "success": "boolean",
+  "hasApiKey": "boolean"
 }
 ```
 
@@ -336,16 +164,13 @@ PUT /api/settings/tmdb
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| apiKey | string | No | TMDB API key |
-| language | string | No | Preferred language |
-| certificationCountry | string | No | Certification country code |
-| useSsl | boolean | No | Use SSL connections |
-| cacheEnabled | boolean | No | Enable response caching |
-| cacheTtl | integer | No | Cache TTL in seconds |
+| apiKey | string | No | TMDB API key override |
 
 ---
 
 ## Filter settings
+
+Despite the name, this is TMDB *discover* filtering (what shows up when browsing/discovering new content), not download/RSS filtering.
 
 ### Get filter settings
 
@@ -357,12 +182,15 @@ GET /api/settings/filters
 
 ```json
 {
-  "minimumSeeders": "integer",
-  "retention": "integer",
-  "rssSyncInterval": "integer",
-  "enableCompletedDownloadHandling": "boolean",
-  "removeCompletedDownloads": "boolean",
-  "removeFailedDownloads": "boolean"
+  "success": "boolean",
+  "filters": {
+    "include_adult": "boolean",
+    "min_vote_average": "number",
+    "min_vote_count": "number",
+    "language": "string",
+    "region": "string",
+    "excluded_genre_ids": ["number"]
+  }
 }
 ```
 
@@ -372,20 +200,13 @@ GET /api/settings/filters
 PUT /api/settings/filters
 ```
 
-### Request body schema
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| minimumSeeders | integer | No | Minimum seeders for torrents |
-| retention | integer | No | Maximum age in days |
-| rssSyncInterval | integer | No | RSS sync interval in minutes |
-| enableCompletedDownloadHandling | boolean | No | Auto-process completed downloads |
-| removeCompletedDownloads | boolean | No | Remove from client when complete |
-| removeFailedDownloads | boolean | No | Remove from client when failed |
+Accepts a partial `filters` object with any of the fields above.
 
 ---
 
 ## External URL settings
+
+Used to build absolute links (e.g. the Radarr/Sonarr compatibility connection URLs) when Cinephage is behind a reverse proxy or a different address than its local origin.
 
 ### Get external URL
 
@@ -397,9 +218,7 @@ GET /api/settings/external-url
 
 ```json
 {
-  "externalUrl": "string",
-  "basePath": "string",
-  "useSsl": "boolean"
+  "url": "string | null"
 }
 ```
 
@@ -413,13 +232,33 @@ PUT /api/settings/external-url
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| externalUrl | string | No | External access URL |
-| basePath | string | No | Base path for reverse proxy |
-| useSsl | boolean | No | Use SSL in generated URLs |
+| url | string \| null | Yes | Full external URL, or `null`/empty string to clear it |
+
+---
+
+## Radarr/Sonarr compatibility
+
+```
+GET  /api/settings/arr-compat
+PUT  /api/settings/arr-compat
+```
+
+`GET` returns `{ "enabled": boolean }`; `PUT` accepts the same shape to toggle the compatibility layer. See [Configure Radarr/Sonarr compatibility](/guides/configure/system/arr-compat).
+
+## Sidecar file settings
+
+```
+GET  /api/settings/sidecar
+PUT  /api/settings/sidecar
+```
+
+Both return/accept `{ enabled, overwriteExisting, includeArtwork, tvSeriesLevel, tvSeasonLevel, tvEpisodeLevel }`. See [Configure Sidecar Files](/guides/configure/system/sidecar-files).
 
 ---
 
 ## API key management
+
+Cinephage is single-admin - there are exactly two fixed keys per account (Main and Media Streaming), not arbitrarily-named keys.
 
 ### List API keys
 
@@ -427,86 +266,87 @@ PUT /api/settings/external-url
 GET /api/settings/system/api-keys
 ```
 
-### Response codes
-
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
-
 ### Response schema
 
 ```json
 {
-  "keys": [
+  "success": "boolean",
+  "data": [
     {
       "id": "string",
       "name": "string",
-      "type": "string",
+      "key": "string",
       "createdAt": "string",
-      "lastUsedAt": "string"
+      "metadata": { "type": "main | streaming", "description": "string" }
     }
   ]
 }
 ```
 
-### Generate API key
+Unlike a typical show-once API key design, Cinephage's keys are recoverable - `key` here is the real, full key value, not a masked/redacted one. `GET` can always retrieve it again; there's no "copy it now or lose it" step.
+
+### Generate API keys
 
 ```
 POST /api/settings/system/api-keys
 ```
 
-### Request body schema
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| name | string | Yes | Key name |
-| type | string | Yes | Key type (main, streaming) |
+Takes no request body. Auto-generates (or returns existing) Main and Media Streaming API keys for the current admin user.
 
 ### Response schema
 
 ```json
 {
   "success": "boolean",
-  "key": {
-    "id": "string",
-    "name": "string",
-    "type": "string",
-    "value": "string",
-    "createdAt": "string"
+  "data": {
+    "mainKey": { "id": "string", "key": "string" },
+    "streamingKey": { "id": "string", "key": "string" }
   }
 }
 ```
 
-:::warning
-The `value` field is only returned on creation. Save it securely as it cannot be retrieved again.
-:::
+`mainKey`/`streamingKey` is `null` instead of an object if that key already existed (this endpoint only creates keys that are missing).
 
-### Regenerate API key
+### Regenerate an API key
 
 ```
 POST /api/settings/system/api-keys/:id/regenerate
 ```
 
-Invalidates the old key and generates a new one.
+Requires an authenticated user (not admin-only, unlike the rest of this section) - invalidates the old key and generates a new one with the same name/type.
 
 ### Response schema
 
 ```json
 {
   "success": "boolean",
-  "key": {
-    "id": "string",
-    "value": "string",
-    "updatedAt": "string"
-  }
+  "data": { "id": "string", "key": "string", "name": "string", "metadata": "object" }
 }
 ```
 
 ---
 
-## Log streaming
+## Log settings & history
+
+### Get/update log settings
+
+```
+GET /api/settings/logs/settings
+PUT /api/settings/logs/settings
+```
+
+Retention days and other log-capture settings.
+
+### Query log history
+
+```
+GET /api/settings/logs/history
+DELETE /api/settings/logs/history
+```
+
+`GET` queries persisted historical log entries; `DELETE` clears log history.
+
+### Log streaming
 
 SSE endpoint for real-time log streaming.
 
@@ -514,62 +354,40 @@ SSE endpoint for real-time log streaming.
 GET /api/settings/logs/stream
 ```
 
-### Response format
-
-Server-Sent Events stream with log entries.
-
-### Event format
-
-```
-event: log
-data: {"level":"info","message":"...","timestamp":"...","source":"..."}
-```
-
-### Log levels
-
-| Level | Description |
-|-------|-------------|
-| `debug` | Debug information |
-| `info` | Informational messages |
-| `warn` | Warning messages |
-| `error` | Error messages |
-
----
-
-## Download logs
-
-Downloads the log file.
+### Download logs
 
 ```
 GET /api/settings/logs/download
 ```
 
-### Response codes
+### Client error reports
 
-| Code | Description |
-|------|-------------|
-| 200 | Success (file download) |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
+```
+POST /api/settings/logs/client-report
+```
+
+Public endpoint the browser UI itself uses to report client-side JavaScript errors back to the server log - not an admin-facing settings endpoint.
 
 ---
 
-## Setting categories
+## Backup & restore
 
-| Category | Description |
-|----------|-------------|
-| `general` | General application settings |
-| `media` | Media management settings |
-| `download` | Download client settings |
-| `indexer` | Indexer settings |
-| `notification` | Notification settings |
-| `ui` | User interface settings |
-| `security` | Security and authentication settings |
+See the [Backup and restore guide](/guides/deploy/backup-restore) for the full procedure. There is no restore-from-backup API endpoint - restoring is done by copying backup files back into Cinephage's data directory before startup.
+
+```
+POST /api/settings/system/backup
+PUT  /api/settings/system/backup
+GET  /api/settings/system/db-backup
+PUT  /api/settings/system/db-backup
+POST /api/settings/system/db-backup/run
+GET  /api/settings/system/db-backup/list
+```
 
 ---
 
 ## See Also
 
+- [API endpoints overview](/reference/api/endpoints-overview) - full endpoint listing by category
 - [Authentication](../authentication) - API authentication
 - [Rate Limiting](../rate-limiting) - Rate limit configuration
 - [Movies](movies) - Movie library endpoints

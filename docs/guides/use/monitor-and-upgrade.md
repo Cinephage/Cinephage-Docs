@@ -47,7 +47,7 @@ Cinephage supports monitoring at multiple levels:
 
 ### Access task settings
 
-1. Go to **Settings > Tasks**
+1. Go to **Settings > Monitoring > Tasks**
 2. Review and configure monitoring tasks
 3. Enable/disable tasks as needed
 4. Set appropriate intervals
@@ -69,7 +69,7 @@ Cinephage supports monitoring at multiple levels:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | **Enabled** | Yes | Enable/disable this task |
-| **Interval** | 6 hours | How often to run |
+| **Interval** | 24 hours (daily) | How often to run - editable, minimum 15 minutes |
 | **Search Type** | Missing | Only searches for items with no files |
 
 **Best For:**
@@ -128,48 +128,37 @@ Result: Task searches for 1080p version
 Upgrade search is resource-intensive. Weekly is usually sufficient. Use cutoff unmet for regular monitoring.
 :::
 
-#### New Episode Detection (Series Only)
+#### New Episode Check (Series Only)
 
-**Purpose:** Automatically add new episodes for monitored series
+**Purpose:** Search for recently aired episodes of monitored series
 
 **How It Works:**
-1. Checks TMDB for new episode listings
-2. Adds new episodes to monitored series
-3. Triggers search if episode is monitored
+1. Checks for episodes of monitored series that have recently aired
+2. Triggers a search if the episode is monitored and missing
 
 **Configuration:**
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | **Enabled** | Yes | Enable/disable |
-| **Interval** | 6 hours | How often to check |
-| **Auto-Monitor New** | Yes | Automatically monitor new episodes |
+| **Interval** | 1 hour | How often to check - editable, minimum 15 minutes |
 
-**When It Runs:**
-- New season announced
-- New episode added to existing season
-- Air dates updated
+#### Pending Release Processing
 
-#### RSS Sync
-
-**Purpose:** Check indexers for new releases
+**Purpose:** Process releases waiting in the delay profile queue
 
 **How It Works:**
-1. Fetches RSS feeds from configured indexers
-2. Matches releases to monitored items
-3. Automatically grabs matching releases
-4. Bypasses search for immediate availability
+1. Reviews releases that were found but are being held per a delay profile
+2. Grabs a release once its delay timer expires (or a better one arrives first)
 
 **Configuration:**
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | **Enabled** | Yes | Enable/disable |
-| **Interval** | 15 minutes | How often to sync |
+| **Interval** | 15 minutes | How often to check the queue |
 
-:::caution[Rate Limits]
-Short intervals may cause rate limiting from indexers. 15-30 minutes is recommended.
-:::
+This is not an RSS-feed-polling task - indexer searches happen via the tasks above; this one only manages the delay-profile hold queue described in [Delay profiles](#delay-profiles) below.
 
 ## Quality Upgrade System
 
@@ -185,40 +174,11 @@ When Cinephage finds a better quality release:
 
 ### Quality scoring
 
-Each quality is assigned a score:
-
-```
-Resolution:     480p=20, 720p=50, 1080p=80, 2160p=100
-Source:         BluRay=+40, WEB-DL=+30, HDTV=+10
-Codec:          H.265=+20, AV1=+25, H.264=0
-HDR:            Dolby Vision=+30, HDR10+=+20
-Audio:          Atmos=+25, DTS-HD MA=+20
-```
-
-**Example Scores:**
-
-| Release | Score |
-|---------|-------|
-| 1080p BluRay H.264 | 120 |
-| 1080p BluRay H.265 HDR10 | 150 |
-| 2160p BluRay H.265 Dolby Vision | 175 |
+Cinephage scores releases against ~267 built-in Custom Formats (resolution, source, codec, HDR, audio, release groups, and more), with each quality profile assigning its own point value per format - there's no single fixed formula shared across profiles. See [Quality Scoring](/explanation/quality-scoring) for the full mechanism and real examples from the built-in profiles.
 
 ### Upgrade cutoff
 
-The cutoff is the quality level where upgrades stop:
-
-**Example Profile:**
-```yaml
-Qualities: [720p, 1080p, 2160p]
-Upgrades Allowed: Yes
-Cutoff: 1080p BluRay
-```
-
-**Upgrade Path:**
-1. First download: 720p HDTV (score: 60)
-2. Upgrade to: 1080p WEB-DL (score: 110)
-3. Upgrade to: 1080p BluRay (score: 120) ← Cutoff met
-4. No further upgrades (unless using "Upgrade Search" task)
+The cutoff is the quality level where automatic upgrades stop. Once a monitored item's current file scores at or above the profile's cutoff, the Cutoff Unmet task stops trying to upgrade it - only the (less frequent, opt-in) Upgrade Search task will still look for further improvements above cutoff.
 
 ## Setting Up Monitoring
 
@@ -257,12 +217,7 @@ Cutoff: 1080p BluRay
 Monitor entire series (all seasons):
 
 1. Add series via **Discover** or **TV Shows > Add New**
-2. Set **Monitor** to one of:
-   - **All Episodes** - Monitor every episode
-   - **Future Episodes** - Monitor upcoming episodes only
-   - **Missing Episodes** - Monitor episodes without files
-   - **Existing Episodes** - Monitor episodes with files (for upgrades)
-   - **None** - Don't monitor
+2. Set **Monitor** to one of: All Episodes, Future, Missing, Existing, First Season, Last Season, Recent, Pilot, or None
 3. Click **Add**
 
 #### Season-Level Monitoring
@@ -371,51 +326,26 @@ Set delays to avoid "bad" releases:
 
 **Configuration:**
 
-1. Go to **Settings > Profiles > Delay**
-2. Set delays per quality:
-   ```
-   HDTV: 0 minutes (download immediately)
-   WEB-DL: 180 minutes (wait 3 hours)
-   BluRay: 1440 minutes (wait 24 hours)
-   ```
+1. Go to **Settings > Library > Quality Settings > Delay Profiles**
+2. Set delays per quality tier
 
 **How It Works:**
 1. Content becomes available (e.g., HDTV)
 2. Timer starts based on delay profile
 3. If better quality available before timer expires, wait
-4. When timer expires, download best available
+4. When timer expires, download best available (the [Pending Release Processing](#core-monitoring-tasks) task is what checks and acts on expired timers)
 
-:::tip[Use Case]
-Set 24-hour delay for BluRay to avoid early low-quality encodes. If a good WEB-DL releases within 24 hours, you'll get that instead of waiting for BluRay.
-:::
-
-### Release profiles
-
-Create rules for automatic release selection:
-
-1. Go to **Settings > Profiles > Release**
-2. Add preferred words:
-   - Must contain: Required words in release name
-   - Must not contain: Rejected words
-   - Preferred: Bonus points for these words
-
-**Example:**
-```
-Must contain: x264
-Must not contain: HC, FRENCH, GERMAN
-Preferred: REMUX (+50 points), SPARKS (+30 points)
-```
+See [Delay Profiles](../configure/quality/delay-profiles) for full configuration details.
 
 ### Custom formats
 
-Advanced scoring with custom format rules:
+Advanced, condition-based scoring rules - this is Cinephage's equivalent of the "release profiles" (must-contain/must-not-contain/preferred-words) concept some other tools have; there's no separate release-profiles feature here, everything goes through Custom Formats.
 
-1. Go to **Settings > Profiles > Custom Formats**
-2. Create format with conditions:
-   - Contains "HDR" → +50 points
-   - Is "HDTV" → -20 points
-   - Group is "YIFY" → -100 points (reject)
-3. Apply to quality profiles
+1. Go to **Settings > Library > Quality Settings > Custom Formats**
+2. Create a format with one or more conditions (release title contains/doesn't contain a term, resolution/source/codec/language matches, release group matches, etc.)
+3. Apply the format to a quality profile with your chosen point value (positive to prefer, negative or very large negative to effectively reject)
+
+See [Custom Formats](../configure/quality/custom-formats) and [Quality Scoring](/explanation/quality-scoring) for full details.
 
 ## Troubleshooting Monitoring
 
@@ -430,8 +360,8 @@ Advanced scoring with custom format rules:
 **Check Tasks Are Enabled:**
 
 ```
-**Settings > Tasks > Missing Content Search** = Enabled
-**Settings > Tasks > Cutoff Unmet Search** = Enabled
+**Settings > Monitoring > Tasks > Missing Content Search** = Enabled
+**Settings > Monitoring > Tasks > Cutoff Unmet Search** = Enabled
 ```
 
 **Check Quality Profile:**
@@ -454,7 +384,7 @@ Result: No upgrades needed
 **Check Upgrade Task:**
 
 ```
-**Settings > Tasks > Upgrade Search**
+**Settings > Monitoring > Tasks > Upgrade Search**
 ```
 
 This task searches above cutoff. If disabled, no above-cutoff upgrades occur.
@@ -480,7 +410,7 @@ After: Cutoff = 1080p BluRay (stops at good quality)
 
 Turn off aggressive searching:
 ```
-**Settings > Tasks > Upgrade Search** = Disabled
+**Settings > Monitoring > Tasks > Upgrade Search** = Disabled
 ```
 
 **Use Custom Formats:**
@@ -530,7 +460,7 @@ Score: -1000 for anything else
 
 ## See Also
 
-- [Set Up Quality Profiles](../configure/quality-profiles) - Detailed quality configuration
+- [Set Up Quality Profiles](../configure/quality/quality-profiles) - Detailed quality configuration
 - [Quality Scoring](/explanation/quality-scoring) - How scoring works
 - [Handle Failed Downloads](handle-failed-downloads) - Deal with download failures
 - [Search and Download](search-and-download) - Manual searching

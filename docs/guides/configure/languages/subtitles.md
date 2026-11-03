@@ -1,7 +1,7 @@
 ---
 title: Configure Subtitles
 description: Set up subtitle providers, language profiles, and automatic downloads
-sidebar_position: 4
+sidebar_position: 2
 tags: [subtitles, languages, providers, configuration, guide]
 keywords: [subtitles, languages, providers, sync, configuration]
 ---
@@ -126,71 +126,34 @@ Providers are searched in priority order (1 = highest):
 5. Gestdown (Priority 5)
 6. Others (Priority 6-10)
 
-## Part 2: Create Language Profiles
+## Part 2: Configure Subtitle Requirements on a Language Profile
 
-Language profiles define which languages you want subtitles for.
+Subtitle wants are part of the same language profile that controls audio language preferences - see [Language Profiles](language-preferences) for creating a profile, assigning it as the instance/library default, and overriding it per item. This section covers the subtitle-specific fields each language gets within a profile.
 
 ### Step 1: access language profiles
 
-1. Go to **Settings > Integrations > Language Profiles**
-2. See default profiles or create new ones
+Go to **Settings > Library > Media Languages** and open a profile for editing.
 
-### Step 2: create a new profile
+### Step 2: add a subtitle requirement
 
-1. Click **Add Language Profile**
-2. Enter **Profile Name**: `English Primary` (or your preference)
-3. Configure languages:
+For each language you add to a profile's subtitle list, set two fields in addition to the language itself:
 
-**Add Languages:**
+- **Variant** - `Regular`, `Forced`, or `Both (regular + forced)`. A forced subtitle only covers foreign-language dialogue/on-screen text in an otherwise-native-language file; regular covers the whole thing.
+- **Accessibility** - `Any` (no preference), `Prefer HI` (rank hearing-impaired subtitles higher but accept either), `Require HI`, or `Exclude HI`.
 
-1. Click **Add Language**
-2. Select language from dropdown
-3. Set options:
-   - **Required**: Must have this subtitle
-   - **Cutoff**: Stop searching once found
-   - **Upgrade**: Continue searching for better matches
-
-**Example Profile - English Primary:**
+**Example - English, forced-only plus full Spanish:**
 
 ```
 1. English
-   - Required: Yes
-   - Cutoff: Yes
-   - Upgrade: No
+   - Variant: Forced
+   - Accessibility: Any
 
 2. Spanish
-   - Required: No
-   - Cutoff: No
-   - Upgrade: Yes
+   - Variant: Both (regular + forced)
+   - Accessibility: Prefer HI
 ```
 
-### Step 3: create multi-language profile
-
-For multiple required languages:
-
-**Example - English and Spanish:**
-
-```
-1. English
-   - Required: Yes
-   - Cutoff: Yes
-
-2. Spanish
-   - Required: Yes
-   - Cutoff: Yes
-
-3. French
-   - Required: No
-   - Cutoff: Yes
-   - Upgrade: Yes (optional extra)
-```
-
-### Step 4: set default profile
-
-1. Go to **Settings > General**
-2. Under **Subtitle Settings**
-3. Select **Default Language Profile**
-4. Click **Save**
+A subtitle only satisfies a requirement if its language, variant, and accessibility all match - the matcher is exact on variant/accessibility and base-or-region-exact on language (a bare `en` requirement accepts `en-US`/`en-GB`, but a `pt-BR` requirement only accepts `pt-BR`, not a bare `pt`).
 
 ## Part 2.5: Embedded Subtitle Recognition
 
@@ -226,21 +189,13 @@ Embedded subtitle recognition is automatic and requires no configuration. It wor
 
 ### Automatic download on import
 
-Enable subtitles to download automatically when media is imported:
-
-1. Go to **Settings > Tasks**
-2. Find **Subtitle Search on Import** task
-3. Enable it
-4. Set interval (default: immediate)
-5. Click **Save**
-
-This triggers automatic subtitle search when movies/episodes are imported to your library.
+Subtitle search on import isn't a separate scheduled task - it's controlled by the **wants subtitles** setting on the library (default for new items, under **Settings > Library > Libraries**) and can be overridden per movie/series by editing that item and toggling whether subtitles are wanted.
 
 ### Missing subtitles monitoring
 
 The **Missing Subtitles** task automatically searches for subtitles on media missing required languages:
 
-1. In **Settings > Tasks**
+1. In **Settings > Monitoring > Tasks**
 2. Find **Missing Subtitles** task
 3. Enable it
 4. Set interval (default: every 6 hours)
@@ -252,19 +207,19 @@ This task respects your language profiles and only searches for missing required
 
 The **Subtitle Upgrade** task searches for better-scoring subtitles when your profile allows upgrades:
 
-1. In **Settings > Tasks**
+1. In **Settings > Monitoring > Tasks**
 2. Find **Subtitle Upgrade** task
 3. Enable it
 4. Set interval (default: daily)
 5. Click **Save**
 
-This task only runs when your language profile has **Upgrade** enabled for at least one language.
+This task only runs when the profile's **Allow Upgrades** toggle is on - it's a single profile-wide setting, not per-language.
 
 ### Task activity history
 
 All subtitle tasks record detailed activity history:
 
-1. Go to **Settings > Tasks**
+1. Go to **Settings > Monitoring > Tasks**
 2. Click **View History** on any subtitle task
 3. See per-item activity including:
    - Items searched
@@ -294,8 +249,8 @@ History is automatically cleaned up after 30 days.
 
 ### Set default for new items
 
-1. Go to **Settings > General**
-2. Under **Subtitle Settings**
+1. Go to **Settings > Integrations > Language Profiles**
+2. Under the default settings section
 3. Select **Default Language Profile**
 4. This applies to all newly added content
 5. Click **Save**
@@ -628,12 +583,12 @@ Subtitles are small files:
 
 Now that subtitles are configured:
 
-- [Search and Download](../use/search-and-download) media with subtitle support
-- [Set Up Live TV](live-tv) for Live TV with subtitles
-- [Configure NZB Streaming](nzb-streaming) for streaming with subtitle support
+- [Search and Download](../../use/search-and-download) media with subtitle support
+- [Set Up Live TV](../streaming/live-tv) for Live TV with subtitles
+- [Configure NZB Streaming](../streaming/nzb-streaming) for streaming with subtitle support
 
 ## See Also
 
 - [Supported Languages](/reference/configuration/supported-languages) - Language configuration reference
-- [Troubleshooting](../deploy/troubleshooting) - Common issues
-- [Quality Profiles](quality-profiles) - Quality settings
+- [Troubleshooting](../../deploy/troubleshooting) - Common issues
+- [Quality Profiles](../quality/quality-profiles) - Quality settings

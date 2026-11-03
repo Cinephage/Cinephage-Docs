@@ -17,7 +17,7 @@ docker compose logs -f cinephage
 
 **Web Interface:**
 ```
-Settings → System → Logs
+Settings → Monitoring → Logs
 ```
 
 **Log Files:**
@@ -54,9 +54,9 @@ docker exec cinephage sqlite3 /config/data/cinephage.db "VACUUM;"
 sqlite3 ./data/cinephage.db "VACUUM;"
 ```
 
-**Set retention:**
+**Set log retention:**
 ```
-Settings → System → Data Retention
+Settings → Monitoring → Logs
 ```
 
 ### Cinephage won't start, what do I do?
@@ -124,7 +124,7 @@ services:
 **Resources:**
 - 📖 This documentation
 - 💬 [Discord Community](https://discord.gg/scGCBTSWEt)
-- 🐛 [GitHub Issues](https://github.com/MoldyTaint/Cinephage/issues)
+- 🐛 [GitHub Issues](https://github.com/cinephage/cinephage/issues)
 - 📧 Check logs and provide details when asking for help
 
 **When asking for help, include:**
@@ -146,7 +146,7 @@ Not recommended. SQLite doesn't handle concurrent access well. If you need multi
 
 ### Is there an API?
 
-Yes, but it's currently private and undocumented. Public API documentation will be released in the future.
+Yes. Cinephage has its own internal API, and it also exposes a Radarr- and Sonarr-compatible API layer (`/api/radarr` and `/api/sonarr`) so tools built for Radarr/Sonarr - like autobrr, Overseerr/Jellyseerr, Pulsarr, and Notifiarr - can connect to Cinephage directly without a separate Radarr or Sonarr instance. Enable it at **Settings > System > General**. See [Configure Radarr/Sonarr Compatibility](/guides/configure/system/arr-compat) for setup details.
 
 ### Can I contribute?
 
@@ -156,11 +156,11 @@ Yes! Cinephage is open source:
 - 📝 Improve documentation
 - 💻 Submit pull requests
 
-See [Contributing](https://github.com/MoldyTaint/Cinephage/blob/main/CONTRIBUTING.md).
+See [Contributing](https://github.com/cinephage/cinephage/blob/main/CONTRIBUTING.md).
 
 ### What's the roadmap?
 
-Check the [GitHub repository](https://github.com/MoldyTaint/Cinephage) for:
+Check the [GitHub repository](https://github.com/cinephage/cinephage) for:
 - Active development
 - Feature requests
 - Known issues
@@ -204,4 +204,4 @@ sqlite3 ./config/data/cinephage.db "VACUUM;"
 - [Getting Help](/getting-started/getting-help) - Support resources
 - [Configuration FAQ](/support/faq/configuration) - Environment issues
 - [Installation FAQ](/support/faq/installation) - Setup problems
-- [GitHub Issues](https://github.com/MoldyTaint/Cinephage/issues) - Bug reports
+- [GitHub Issues](https://github.com/cinephage/cinephage/issues) - Bug reports

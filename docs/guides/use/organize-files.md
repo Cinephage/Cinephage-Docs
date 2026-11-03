@@ -25,7 +25,7 @@ Naming patterns use **tokens** (variables) that get replaced with actual values:
 ```
 {Movie Title} ({Release Year}) - {Quality} - {Group}
 ↓
-The Matrix (1999) - 1080p BluRay - YIFY
+The Matrix (1999) - BluRay-1080p - YIFY
 ```
 
 ### Available tokens
@@ -41,13 +41,15 @@ The Matrix (1999) - 1080p BluRay - YIFY
 | `{Release Year}` | Release year | "1999" |
 | `{IMDb Id}` | IMDb identifier | "tt0133093" |
 | `{TMDB Id}` | TMDB identifier | "603" |
-| `{Quality}` | Quality string | "1080p BluRay" |
-| `{Quality:Full}` | Full quality details | "1080p BluRay x264" |
+| `{Quality}` | Quality string (Source-Resolution) | "BluRay-1080p" |
+| `{QualityFull}` | Quality with Proper/Repack markers | "Proper BluRay-1080p" |
+| `{Resolution}` | Resolution only, no source | "1080p" |
+| `{Source}` | Source only, no resolution | "BluRay" |
 | `{Group}` | Release group | "YIFY" |
 | `{Edition}` | Edition tag | "Director's Cut" |
 | `{Codec}` | Video codec | "x264" |
-| `{Audio}` | Audio codec | "DTS" |
-| `{Audio:Channels}` | Audio channels | "5.1" |
+| `{AudioCodec}` | Audio codec | "DTS" |
+| `{Audio}` | Audio channels | "5.1" |
 | `{HDR}` | HDR format | "HDR10" |
 
 #### TV Show Tokens
@@ -66,7 +68,7 @@ The Matrix (1999) - 1080p BluRay - YIFY
 
 ### Access naming settings
 
-1. Go to **Settings > Media Management > Naming**
+1. Go to **Settings > Library > Naming**
 2. Configure patterns for Movies and TV separately
 
 ### Movie folder pattern
@@ -90,9 +92,13 @@ Controls how movie folders are named:
 {Movie Title} ({Release Year}) [{IMDb Id}]
 → The Matrix (1999) [tt0133093]
 
-# Quality in folder name
-{Movie Title} ({Release Year}) [{Quality}]
+# Resolution in folder name
+{Movie Title} ({Release Year}) [{Resolution}]
 → The Matrix (1999) [1080p]
+
+# Source + resolution in folder name
+{Movie Title} ({Release Year}) [{Quality}]
+→ The Matrix (1999) [BluRay-1080p]
 
 # First letter organization (A, B, C...)
 {Movie Title:First}/{Movie Title} ({Release Year})
@@ -109,27 +115,27 @@ Controls how movie files are renamed:
 ```
 
 **Examples:**
-- "The Matrix (1999) - 1080p BluRay - YIFY.mkv"
-- "Inception (2010) - 2160p UHD BluRay - SPARKS.mkv"
+- "The Matrix (1999) - BluRay-1080p - YIFY.mkv"
+- "Inception (2010) - BluRay-2160p - SPARKS.mkv"
 
 **Custom Patterns:**
 
 ```
 # Include edition info
 {Movie Title} ({Release Year}) - {Edition} - {Quality}
-→ The Matrix (1999) - Director's Cut - 1080p BluRay.mkv
+→ The Matrix (1999) - Director's Cut - BluRay-1080p.mkv
 
 # Group and codec
-{Movie Title} ({Release Year}) [{Quality}][{Codec}]-{Group}
-→ The Matrix (1999) [1080p BluRay][x264]-YIFY.mkv
+{Movie Title} ({Release Year}) [{Resolution}][{Codec}]-{Group}
+→ The Matrix (1999) [1080p][x264]-YIFY.mkv
 
 # Minimal naming
 {Movie Title} ({Release Year})
 → The Matrix (1999).mkv
 
 # Maximum info
-{Movie Title} ({Release Year}) - {Quality:Full} [{Codec} {Audio} {Audio:Channels}] [{Group}]
-→ The Matrix (1999) - 1080p BluRay x264 [x264 DTS 5.1] [YIFY].mkv
+{Movie Title} ({Release Year}) - {QualityFull} [{Codec} {AudioCodec} {Audio}] [{Group}]
+→ The Matrix (1999) - BluRay-1080p [x264 DTS 5.1] [YIFY].mkv
 ```
 
 ### TV show folder pattern
@@ -162,14 +168,18 @@ Season {Season}          → Season 1
 S{Season:00}             → S01
 {Season:00}x##           → 01x##
 
-# Year-based seasons
-{Series Title}/Season {Season:00} ({Air Date:YYYY})
+# Year-based seasons (series start year, not per-episode air year)
+{Series Title}/Season {Season:00} ({Series Year})
 → Breaking Bad/Season 01 (2008)
 
-# Quality in season folder
-{Series Title}/Season {Season:00} [{Quality}]
+# Resolution in season folder
+{Series Title}/Season {Season:00} [{Resolution}]
 → Breaking Bad/Season 01 [1080p]
 ```
+
+:::note[No year-only format spec on Air Date]
+`{Air Date}` always renders the full `YYYY-MM-DD` value - there's no `{Air Date:YYYY}` format spec to extract just the year. Use `{Series Year}` for the series' start year instead.
+:::
 
 ### Episode file pattern
 
@@ -188,12 +198,15 @@ Controls how episode files are named:
 
 ```
 # Dot notation
-{Series.Title}.S{Season:00}E{Episode:00}.{Episode.Title}
-→ Breaking.Bad.S01E01.Pilot.mkv
+# Write the pattern normally with spaces, then set "Replace Spaces With" to
+# "." under Settings > Library > Naming (Advanced) - it rewrites every space
+# in the final rendered name, not just the ones inside token braces.
+{Series Title} S{Season:00}E{Episode:00} {Episode Title}
+→ (with Replace Spaces With = ".") Breaking.Bad.S01E01.Pilot.mkv
 
 # Include quality
 {Series Title} - S{Season:00}E{Episode:00} - {Episode Title} [{Quality}]
-→ Breaking Bad - S01E01 - Pilot [1080p WEB-DL].mkv
+→ Breaking Bad - S01E01 - Pilot [WEB-DL-1080p].mkv
 
 # Absolute numbering (for anime)
 {Series Title} - {Absolute:000} - {Episode Title}
@@ -212,50 +225,37 @@ S{Season:00}E{Episode:00}
 
 ### Conditional tokens
 
-Some tokens only appear when applicable:
+Wrap a token together with its literal prefix/suffix text in an extra pair of braces: `{prefix{Token}suffix}`. If the token renders empty, the entire wrapped block - including the literal text - is dropped instead of leaving stray punctuation behind.
 
 ```
-{Movie Title} ({Release Year}){if Edition} - {Edition}{end}
+{Movie Title} ({Release Year}){ - {Edition}}
 → The Matrix (1999) - Director's Cut
-→ Inception (2010)  [no edition, so no extra text]
+→ Inception (2010)  [no edition, so the " - " is dropped too, not just the empty value]
 ```
+
+This also works for brackets around an optional token, e.g. `{[{HDR}]}` only renders `[HDR10]` when HDR info is present.
 
 ### Multi-Episode files
 
-Handle episodes that span multiple files:
+There's no separate "end episode" token. A single `{Episode:00}` already expands to cover every episode in a multi-episode file, formatted according to the **Multi-Episode Style** setting (Settings > Library > Naming > Advanced): Extend (`S01E01E02E03`), Duplicate (`S01E01-E02-E03`), Repeat (`S01E01 - S01E02`), Scene (`S01E01E02`, no padding on the extras), or Range (`S01E01-E03`, the default).
 
 ```
-# Double episode
-{Series Title} - S{Season:00}E{Episode:00}-E{Episode:00}
-→ Show - S01E01-E02 - Special Two-Parter.mkv
-
-# Range notation
-{Series Title} - S{Season:00}E{Episode:00}-{End Episode:00}
-→ Show - S01E01-03 - Three Episode Arc.mkv
+{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}
+→ (default Range style, 2-episode file) Show - S01E01-E02 - Special Two-Parter.mkv
+→ (Extend style, 3-episode file) Show - S01E01E02E03 - Three Episode Arc.mkv
 ```
 
 ### Specials and extras
 
-Naming for non-standard episodes:
+Season 0 (special) episodes use the same season folder pattern as any other season by default (e.g. "Season 00"). Enable **Use Specials Folder** under Settings > Library > Naming (Advanced) - off by default - to route season 0 into a folder literally named "Specials" instead:
 
 ```
-# Specials folder
-{Series Title}/Specials/{Series Title} - S00E{Episode:00} - {Episode Title}
-→ Breaking Bad/Specials/Breaking Bad - S00E01 - Minisodes.mkv
-
-# Bonus content
-{Movie Title} ({Release Year})/Extras/{Type} - {Title}
-→ The Matrix (1999)/Extras/Behind the Scenes - Making Of.mkv
+{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}
+→ (with Use Specials Folder on) Breaking Bad/Specials/Breaking Bad - S00E01 - Minisodes.mkv
+→ (with it off, the default) Breaking Bad/Season 00/Breaking Bad - S00E01 - Minisodes.mkv
 ```
 
-### Custom format token
-
-Use custom format scores in naming:
-
-```
-{Movie Title} ({Release Year}) [CF:{Custom Format}]
-→ Movie (2024) [CF:Remux][CF:HDR10].mkv
-```
+There's no naming-token mechanism for organizing bonus/extras content (behind-the-scenes, deleted scenes, etc.) into its own folder, and no custom-format-score naming token - custom format scores affect quality selection and upgrade behavior, not file/folder names.
 
 ## Folder Structure Examples
 
@@ -401,7 +401,7 @@ chmod -R u+w /path/to/media
 
 Ensure Root Folders are configured:
 ```
-**Settings > Media Management > Root Folders**
+**Settings > Library > Root Folders**
 ```
 
 **Check Path Separators:**
@@ -420,14 +420,18 @@ Cinephage sanitizes filenames automatically:
 
 | Character | Replacement | Example |
 |-----------|-------------|---------|
-| `/` | `-` | "A/B Testing" → "A-B Testing" |
-| `\` | `-` | Same as above |
-| `:` | ` -` | "Movie: Subtitle" → "Movie - Subtitle" |
-| `*` | `` | Removed |
-| `?` | `` | Removed |
-| `"` | `'` | "Movie\"Title\"" → "Movie'Title'" |
-| `<` `>` | `` | Removed |
-| `|` | `-` | Replaced with dash |
+| `/` `\` `*` `?` `"` `<` `>` `\|` | Removed (no replacement) | "A/B Testing" → "AB Testing" |
+| `:` | Configurable (see below) | "Movie: Subtitle" → "Movie - Subtitle" (default) |
+
+Colon handling has its own setting, **Colon Replacement** (Settings &gt; Library &gt; Naming, Advanced), with five modes:
+
+| Mode | Behavior | "Movie: Subtitle" becomes |
+|------|----------|---------------------------|
+| **Smart** (default) | `": "` → `" - "`, `" :"` → `" -"`, any other standalone `:` is removed | "Movie - Subtitle" |
+| **Delete** | Every colon removed | "Movie Subtitle" |
+| **Dash** | Every colon → `-` | "Movie- Subtitle" |
+| **Space Dash** | Every colon → `" -"` | "Movie - Subtitle" |
+| **Space Dash Space** | Every colon → `" - "` | "Movie - Subtitle" |
 
 ## Best Practices
 
@@ -458,13 +462,13 @@ Cinephage sanitizes filenames automatically:
 ### Movie pattern example
 
 ```
-{Movie Title} ({Release Year}) - {Quality:Full}
+{Movie Title} ({Release Year}) - {QualityFull}
 ```
 
 ### TV show pattern example
 
 ```
-{Series Title} - S{Season:00}E{Episode:00} - {Episode Title} [{Quality:Full}]
+{Series Title} - S{Season:00}E{Episode:00} - {Episode Title} [{QualityFull}]
 ```
 
 ## See Also

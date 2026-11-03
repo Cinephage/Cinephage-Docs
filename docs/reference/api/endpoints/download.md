@@ -12,22 +12,26 @@ Endpoints for viewing and managing the download queue.
 
 ## Authentication
 
-Most queue endpoints are publicly accessible for viewing. Admin authorization is required for modifications.
+None of the queue endpoints call an authentication check directly in the route handler - but none of these are actually reachable unauthenticated: a global gate in `hooks.server.ts` requires a valid session or API key on every `/api/*` route before it reaches any handler. Unlike the library endpoints, `/api/queue/*` is not on the viewer read-only allowlist, so these are **admin-only** across the board, including the GET endpoints. See [API Authentication](/reference/api/authentication) for how that global gate works.
 
 | Endpoint | Auth Level |
 |----------|------------|
-| GET `/api/queue` | Public |
-| GET `/api/queue/:id` | Public |
-| DELETE `/api/queue/:id` | Admin |
-| POST `/api/queue/:id/retry` | Admin |
-| POST `/api/queue/cleanup` | Admin |
-| GET `/api/queue/events` | Public |
+| GET `/api/queue` | 🔐 Admin only |
+| GET `/api/queue/:id` | 🔐 Admin only |
+| PATCH `/api/queue/:id` | 🔐 Admin only |
+| DELETE `/api/queue/:id` | 🔐 Admin only |
+| POST `/api/queue/:id/retry` | 🔐 Admin only |
+| POST `/api/queue/clear-failed` | 🔐 Admin only |
+| GET `/api/queue/history` | 🔐 Admin only |
+| DELETE `/api/queue/history` | 🔐 Admin only |
+| POST `/api/queue/refresh` | 🔐 Admin only |
+| POST `/api/queue/relink-orphans` | 🔐 Admin only |
 
 ---
 
 ## List queue
 
-Returns the current download queue with all active and pending items.
+Returns the current download queue.
 
 ```
 GET /api/queue
@@ -37,147 +41,113 @@ GET /api/queue
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| page | integer | No | Page number (default: 1) |
-| limit | integer | No | Items per page (default: 20, max: 100) |
-| status | string | No | Filter by status |
-| movieId | string | No | Filter by movie ID |
-| seriesId | string | No | Filter by series ID |
+| status | string | No | Filter by a single [queue status](#queue-status-values), or `all` |
+| mediaType | string | No | `movie`, `tv`, or `all` |
+| clientId | string | No | Filter by download client ID |
+| includeTerminal | boolean | No | Include `imported`/`removed` items (default: false, terminal items excluded) |
 
-### Status filter values
+### Queue status values
 
 | Status | Description |
 |--------|-------------|
-| `downloading` | Currently downloading |
-| `queued` | Waiting to download |
-| `completed` | Download finished |
-| `failed` | Download failed |
-| `warning` | Download with warnings |
-| `paused` | Paused download |
+| `queued` | Added to queue, waiting to start |
+| `downloading` | Actively downloading |
+| `stalled` | Download stalled (no seeders/peers available) |
+| `awaiting` | Download vanished from client, auto-retrying |
+| `paused` | Download paused |
+| `completed` | Download finished, waiting for import |
+| `postprocessing` | Post-processing in progress (usenet extraction/repair) |
+| `importing` | Import in progress |
+| `imported` | Successfully imported to library (terminal) |
+| `failed` | Failed (download or import) |
+| `seeding` | Download complete, still seeding (pre-import) |
+| `seeding-imported` | Imported, torrent still seeding |
+| `removed` | Removed from queue (terminal) |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
 | 200 | Success |
-| 401 | Authentication required (if not public) |
 
 ### Response schema
 
 ```json
 {
-  "items": [
-    {
-      "id": "string",
-      "downloadId": "string",
-      "title": "string",
-      "status": "string",
-      "trackedDownloadStatus": "string",
-      "trackedDownloadState": "string",
-      "protocol": "string",
-      "downloadClient": "string",
-      "downloadClientId": "string",
-      "indexer": "string",
-      "outputPath": "string",
-      "size": "integer",
-      "sizeleft": "integer",
-      "timeleft": "string",
-      "estimatedCompletionTime": "string",
-      "statusMessages": [
-        {
-          "title": "string",
-          "messages": ["string"]
-        }
-      ],
-      "errorMessage": "string",
-      "episodeIds": ["string"],
-      "movieId": "string",
-      "seriesId": "string",
-      "added": "string",
-      "started": "string",
-      "ended": "string",
-      "quality": "string",
-      "qualityScore": "integer"
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "string",
+        "downloadClientId": "string",
+        "downloadId": "string",
+        "title": "string",
+        "indexerId": "string | null",
+        "indexerName": "string | null",
+        "downloadUrl": "string | null",
+        "magnetUrl": "string | null",
+        "protocol": "string",
+        "movieId": "string | null",
+        "seriesId": "string | null",
+        "episodeIds": ["string"],
+        "seasonNumber": "integer | null",
+        "status": "string",
+        "progress": "number (0.0-1.0)",
+        "size": "integer | null",
+        "downloadSpeed": "integer",
+        "uploadSpeed": "integer",
+        "eta": "integer | null",
+        "ratio": "number",
+        "clientDownloadPath": "string | null",
+        "outputPath": "string | null",
+        "importedPath": "string | null",
+        "quality": "object | null",
+        "addedAt": "string",
+        "startedAt": "string | null",
+        "completedAt": "string | null",
+        "importedAt": "string | null",
+        "errorMessage": "string | null",
+        "importAttempts": "integer",
+        "isAutomatic": "boolean",
+        "isUpgrade": "boolean",
+        "movie": { "id": "string", "tmdbId": "integer", "title": "string", "year": "integer | null", "posterPath": "string | null" },
+        "series": { "id": "string", "tmdbId": "integer", "title": "string", "year": "integer | null", "posterPath": "string | null" },
+        "downloadClient": { "id": "string", "name": "string", "implementation": "string" }
+      }
+    ],
+    "stats": {
+      "totalCount": "integer",
+      "queuedCount": "integer",
+      "downloadingCount": "integer",
+      "stalledCount": "integer",
+      "awaitingCount": "integer",
+      "seedingCount": "integer",
+      "pausedCount": "integer",
+      "completedCount": "integer",
+      "postprocessingCount": "integer",
+      "importingCount": "integer",
+      "failedCount": "integer",
+      "totalSizeBytes": "integer",
+      "totalDownloadSpeed": "integer",
+      "totalUploadSpeed": "integer"
     }
-  ],
-  "totalRecords": "integer",
-  "page": "integer",
-  "pageSize": "integer"
+  }
 }
 ```
 
-### Download status values
-
-| Status | Description |
-|--------|-------------|
-| `downloading` | Active download in progress |
-| `paused` | Download is paused |
-| `queued` | Waiting in download client queue |
-| `completed` | Finished successfully |
-| `failed` | Download failed |
-| `warning` | Completed with warnings |
-
-### Tracked download states
-
-| State | Description |
-|-------|-------------|
-| `downloading` | Currently downloading |
-| `importPending` | Download complete, waiting for import |
-| `importing` | Currently importing to library |
-| `imported` | Successfully imported |
-| `failedPending` | Failed, waiting for retry |
-| `failed` | Failed and will not retry |
-| `ignored` | Ignored by user |
+`downloadUrl` values are redacted (API keys stripped) before being returned. By default, `imported` and `removed` items are excluded unless `includeTerminal=true` or a specific `status` is requested.
 
 ### Example request
 
 ```bash
-curl -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/queue?page=1&limit=10&status=downloading"
-```
-
-### Example response
-
-```json
-{
-  "items": [
-    {
-      "id": "q_550e8400-e29b-41d4-a716-446655440021",
-      "downloadId": "dl_550e8400-e29b-41d4-a716-446655440020",
-      "title": "Inception.2010.1080p.BluRay.x264-Group",
-      "status": "downloading",
-      "trackedDownloadStatus": "ok",
-      "trackedDownloadState": "downloading",
-      "protocol": "torrent",
-      "downloadClient": "qBittorrent",
-      "downloadClientId": "c10e8400-e29b-41d4-a716-446655440030",
-      "indexer": "Indexer1",
-      "outputPath": "/downloads/movies/Inception.2010.1080p.BluRay.x264-Group",
-      "size": 10485760000,
-      "sizeleft": 5242880000,
-      "timeleft": "00:45:00",
-      "estimatedCompletionTime": "2024-01-15T11:15:00Z",
-      "statusMessages": [],
-      "errorMessage": null,
-      "movieId": "550e8400-e29b-41d4-a716-446655440000",
-      "seriesId": null,
-      "added": "2024-01-15T10:30:00Z",
-      "started": "2024-01-15T10:30:05Z",
-      "ended": null,
-      "quality": "Bluray-1080p",
-      "qualityScore": 100
-    }
-  ],
-  "totalRecords": 1,
-  "page": 1,
-  "pageSize": 10
-}
+curl "http://localhost:3000/api/queue?status=downloading"
 ```
 
 ---
 
 ## Get queue item
 
-Returns details for a specific queue item.
+Returns details for a specific queue item, including linked media and download client info.
 
 ```
 GET /api/queue/:id
@@ -195,16 +165,53 @@ GET /api/queue/:id
 |------|-------------|
 | 200 | Success |
 | 404 | Queue item not found |
+| 500 | Failed to fetch queue item |
 
 ### Response schema
 
-Same as individual items in the list queue response.
+The raw queue row plus `media` (`{ type: 'movie' | 'series', id, title, year }` or `null`) and `downloadClient` (`{ id, name, implementation }` or `null`). Unlike the list endpoint, this is not wrapped in `success`/`data`.
+
+---
+
+## Update queue item
+
+Pauses or resumes a queue item.
+
+```
+PATCH /api/queue/:id
+```
+
+### Request body schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| action | string | Yes | `pause` or `resume` |
+
+Pause/resume is not supported for `debrid` protocol downloads.
+
+### Response codes
+
+| Code | Description |
+|------|-------------|
+| 200 | Action applied |
+| 400 | Invalid or unsupported action |
+| 404 | Queue item not found |
+| 500 | Failed to update queue item |
+
+### Response schema
+
+```json
+{
+  "success": true,
+  "action": "paused | resumed"
+}
+```
 
 ---
 
 ## Remove from queue
 
-Removes a download from the queue.
+Removes a download from the queue, and optionally from the download client.
 
 ```
 DELETE /api/queue/:id
@@ -220,31 +227,40 @@ DELETE /api/queue/:id
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| removeFromClient | boolean | No | Also remove from download client (default: true) |
-| blocklist | boolean | No | Add to blocklist (default: false) |
+| removeFromClient | boolean | No | Also remove from download client (default: true; pass `removeFromClient=false` to keep it) |
+| deleteFiles | boolean | No | Delete files on the download client too (default: false) |
+| blocklist | boolean | No | Add to blocklist (not yet implemented - logged only) |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
-| 204 | Deleted successfully |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
+| 200 | Removed |
+| 400 | Queue item is missing a download client (when `removeFromClient=true`) |
 | 404 | Queue item not found |
+| 500 | Failed to delete queue item |
+
+### Response schema
+
+```json
+{
+  "success": true,
+  "message": "Queue item removed"
+}
+```
 
 ### Example request
 
 ```bash
 curl -X DELETE \
-  -H "x-api-key: cinephage_your_key_here" \
-  "http://localhost:3000/api/queue/q_550e8400-e29b-41d4-a716-446655440021?removeFromClient=true&blocklist=true"
+  "http://localhost:3000/api/queue/q_550e8400-e29b-41d4-a716-446655440021?removeFromClient=true"
 ```
 
 ---
 
 ## Retry failed item
 
-Retries a failed download.
+Retries a failed download. If the download client still reports the item as completed, an import retry is attempted first; otherwise the download itself is retried (or, for `debrid` downloads, resubmitted via the debrid handler).
 
 ```
 POST /api/queue/:id/retry
@@ -261,154 +277,144 @@ POST /api/queue/:id/retry
 | Code | Description |
 |------|-------------|
 | 200 | Retry initiated |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
-| 404 | Queue item not found |
-| 409 | Item not in failed state |
+| 400 | Item is not in `failed` status, max retry attempts exceeded, or a debrid configuration error |
+| 404 | Queue item or download client not found |
+| 409 | Debrid retry outcome is ambiguous; automatic retry was refused |
+| 500 | Failed to get download client instance, or an unexpected error |
 
 ### Response schema
 
 ```json
 {
   "success": "boolean",
-  "message": "string"
+  "message": "string",
+  "retryMode": "debrid | undefined",
+  "queueItem": "object",
+  "error": "string"
 }
-```
-
-### Example request
-
-```bash
-curl -X POST \
-  -H "x-api-key: cinephage_your_key_here" \
-  http://localhost:3000/api/queue/q_550e8400-e29b-41d4-a716-446655440021/retry
 ```
 
 ---
 
-## Cleanup queue
+## Clear failed items
 
-Removes completed and failed items from the queue.
+Clears failed downloads from the queue.
 
 ```
-POST /api/queue/cleanup
+POST /api/queue/clear-failed
 ```
 
-### Request body schema
+### Query parameters
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| removeCompleted | boolean | No | Remove completed items (default: true) |
-| removeFailed | boolean | No | Remove failed items (default: true) |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| olderThanDays | integer | No | Only clear items that failed more than N days ago |
+| dryRun | boolean | No | Preview what would be cleared without clearing (default: false) |
 
 ### Response codes
 
 | Code | Description |
 |------|-------------|
-| 200 | Cleanup completed |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
+| 200 | Cleared (or previewed, if `dryRun=true`) |
+| 500 | Failed to clear items |
 
 ### Response schema
 
 ```json
 {
-  "success": "boolean",
-  "removedCount": "integer",
-  "message": "string"
+  "success": true,
+  "dryRun": "boolean",
+  "olderThanDays": "integer | undefined",
+  "summary": {
+    "cleared": "integer",
+    "total": "integer"
+  },
+  "cleared": ["array of cleared items"]
 }
 ```
 
 ### Example request
 
 ```bash
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: cinephage_your_key_here" \
-  -d '{"removeCompleted": true, "removeFailed": true}' \
-  http://localhost:3000/api/queue/cleanup
+curl -X POST "http://localhost:3000/api/queue/clear-failed?olderThanDays=7"
 ```
 
 ---
 
-## Queue events
+## Download history
 
-SSE endpoint for real-time queue updates.
-
-```
-GET /api/queue/events
-```
-
-### Response format
-
-Server-Sent Events stream with JSON payloads.
-
-### Event types
-
-| Event | Description |
-|-------|-------------|
-| `queueItemAdded` | New item added to queue |
-| `queueItemUpdated` | Queue item status changed |
-| `queueItemRemoved` | Item removed from queue |
-| `queueCompleted` | Download completed |
-| `queueFailed` | Download failed |
-
-### Example event
+Returns completed/removed/failed/rejected download history.
 
 ```
-event: queueItemUpdated
-data: {"id":"q_550e8400-e29b-41d4-a716-446655440021","status":"downloading","progress":50}
+GET /api/queue/history
 ```
 
-### Example request
+### Query parameters
 
-```javascript
-const eventSource = new EventSource('http://localhost:3000/api/queue/events');
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| status | string | No | `imported`, `failed`, `rejected`, `removed`, or `all` |
+| mediaType | string | No | `movie`, `tv`, or `all` |
+| limit | integer | No | Max results (default: 50) |
+| offset | integer | No | Pagination offset (default: 0) |
 
-eventSource.addEventListener('queueItemUpdated', (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Queue item updated:', data);
-});
+```
+DELETE /api/queue/history
+```
+
+Clears history entries (see the route for supported query parameters).
+
+---
+
+## Refresh queue
+
+Forces an immediate refresh of queue state from all download clients.
+
+```
+POST /api/queue/refresh
+```
+
+## Relink orphaned downloads
+
+Attempts to relink queue items that have lost their association with a download client entry.
+
+```
+POST /api/queue/relink-orphans
 ```
 
 ---
 
-## Download protocols
+## Real-time queue updates
 
-### Torrent
+There is no dedicated `/api/queue/events` SSE endpoint. Queue state changes (`queue:added`, `queue:updated`, `queue:completed`, `queue:imported`, `queue:failed`) are broadcast as part of the general activity feed:
 
-Torrent downloads use magnet links or .torrent files.
+```
+GET /api/activity/stream
+```
 
-| Field | Description |
-|-------|-------------|
-| `protocol` | `torrent` |
-| `downloadClient` | qBittorrent, Transmission, etc. |
-| `size` | Total size in bytes |
-| `sizeleft` | Remaining size in bytes |
-| `seeders` | Number of seeders |
-| `leechers` | Number of leechers |
-
-### Usenet
-
-Usenet downloads use NZB files.
-
-| Field | Description |
-|-------|-------------|
-| `protocol` | `usenet` |
-| `downloadClient` | SABnzbd, NZBGet, etc. |
-| `size` | Total size in bytes |
-| `sizeleft` | Remaining size in bytes |
+This endpoint requires no authentication and streams Server-Sent Events with activity payloads derived from queue events, not raw queue rows.
 
 ---
 
 ## Download client operations
 
-### Test connection
+### Test connection (unsaved config)
 
-Tests the connection to a download client.
+Tests connection settings without an existing download client record.
+
+```
+POST /api/download-clients/test
+```
+
+### Test connection (existing client)
+
+Tests an existing download client using its stored credentials.
 
 ```
 POST /api/download-clients/:id/test
 ```
+
+Neither test endpoint requires authentication.
 
 ### Response codes
 
@@ -416,8 +422,7 @@ POST /api/download-clients/:id/test
 |------|-------------|
 | 200 | Connection successful |
 | 400 | Connection failed |
-| 401 | Authentication required |
-| 403 | Admin authorization required |
+| 404 | Client not found (`:id` variant) |
 
 ---
 

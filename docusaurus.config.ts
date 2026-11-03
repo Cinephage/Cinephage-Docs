@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
 	title: 'Cinephage',
-	tagline: 'One app to replace them all — self-hosted media management',
+	tagline: 'One app to replace them all - self-hosted media management',
 	favicon: 'img/logo.png',
 
 	future: {
@@ -14,8 +14,8 @@ const config: Config = {
 	url: 'https://docs.cinephage.net',
 	baseUrl: '/',
 
-	organizationName: 'MoldyTaint',
-	projectName: 'Cinephage',
+	organizationName: 'Cinephage',
+	projectName: 'Cinephage-Docs',
 
 	onBrokenLinks: 'throw',
 
@@ -37,7 +37,7 @@ const config: Config = {
 				docs: {
 					sidebarPath: './sidebars.ts',
 					routeBasePath: '/',
-					editUrl: 'https://github.com/MoldyTaint/Cinephage-Docs/edit/main/',
+					editUrl: 'https://github.com/Cinephage/Cinephage-Docs/edit/main/',
 					exclude: ['**/superpowers/**']
 				},
 				blog: false,
@@ -97,15 +97,15 @@ const config: Config = {
 					position: 'right',
 					items: [
 						{
-							href: 'https://github.com/MoldyTaint/Cinephage',
+							href: 'https://github.com/cinephage/cinephage',
 							label: 'Cinephage (main)'
 						},
 						{
-							href: 'https://github.com/MoldyTaint/Cinephage/tree/dev',
+							href: 'https://github.com/cinephage/cinephage/tree/dev',
 							label: 'Cinephage (dev)'
 						},
 						{
-							href: 'https://github.com/MoldyTaint/Cinephage-Docs',
+							href: 'https://github.com/cinephage/cinephage-Docs',
 							label: 'Documentation Repo'
 						}
 					]
@@ -162,11 +162,11 @@ const config: Config = {
 						},
 						{
 							label: 'GitHub Discussions',
-							href: 'https://github.com/MoldyTaint/Cinephage/discussions'
+							href: 'https://github.com/cinephage/cinephage/discussions'
 						},
 						{
 							label: 'Issues',
-							href: 'https://github.com/MoldyTaint/Cinephage/issues'
+							href: 'https://github.com/cinephage/cinephage/issues'
 						}
 					]
 				},
@@ -175,11 +175,11 @@ const config: Config = {
 					items: [
 						{
 							label: 'GitHub',
-							href: 'https://github.com/MoldyTaint/Cinephage'
+							href: 'https://github.com/cinephage/cinephage'
 						},
 						{
 							label: 'Changelog',
-							href: 'https://github.com/MoldyTaint/Cinephage/blob/main/CHANGELOG.md'
+							href: 'https://github.com/cinephage/cinephage/releases'
 						}
 					]
 				}

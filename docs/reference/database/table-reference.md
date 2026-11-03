@@ -24,13 +24,13 @@ The database is organized into logical groups:
 | Table | Purpose | Notes |
 |-------|---------|-------|
 | `movies` | Movie library entries | Links to TMDB metadata |
-| `tv_shows` | TV show library entries | Contains season/episode counts |
-| `episodes` | Individual episodes | Links to `tv_shows` and files |
+| `series` | TV show library entries | Contains season/episode counts |
+| `episodes` | Individual episodes | Links to `series` and files |
 | `download_queue` | Active downloads | Status tracking and client mapping |
-| `indexers` | Configured search sources | YAML definition references |
+| `indexers` | Configured search sources | Instance config; YAML definitions themselves live on disk, not in this table |
 | `settings` | Application configuration | Key-value store |
-| `users` | User accounts | Authentication and permissions |
-| `api_keys` | API key storage | Scoped access tokens |
+| `user` | User accounts | Better Auth table (singular name) |
+| `apikey` | API key storage | Better Auth table (no underscore); the plaintext-recoverable secret lives in `userApiKeySecrets` |
 
 ## Schema Details
 

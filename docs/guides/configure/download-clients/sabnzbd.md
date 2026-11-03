@@ -42,9 +42,9 @@ This guide shows you how to configure SABnzbd as your download client in Cinepha
 | **Host** | SABnzbd IP or hostname | `localhost`, `192.168.1.100`, or `sabnzbd` (Docker) |
 | **Port** | Web UI port | `8080` |
 | **API Key** | Your SABnzbd API key | `a1b2c3d4...` |
-| **Username** | SABnzbd username | Only if authentication enabled |
-| **Password** | SABnzbd password | Only if authentication enabled |
 | **Use SSL** | Enable for HTTPS | Check if using HTTPS |
+
+**Note:** Cinephage authenticates to SABnzbd using the API key only - there are no separate username/password fields for this client.
 
 **Host configuration guide:**
 
@@ -57,10 +57,11 @@ This guide shows you how to configure SABnzbd as your download client in Cinepha
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| **Category** | Organizes downloads | `movies` or `tv` |
+| **Movies category** | SABnzbd category applied to movie downloads | `movies` |
+| **TV Shows category** | SABnzbd category applied to TV downloads | `tv` |
 | **URL Base** | Base path for reverse proxy | `/sabnzbd` |
 
-Categories in SABnzbd help separate downloads by type and can trigger different post-processing scripts.
+Categories in SABnzbd help separate downloads by type and can trigger different post-processing scripts. Cinephage sends separate category names for movies and TV rather than a single shared category.
 
 ### URL base (reverse proxy support)
 
@@ -132,7 +133,7 @@ If the test fails:
 
 - Check path mappings if Cinephage and SABnzbd use different paths
 - Verify Cinephage can access the completed download folder
-- Check Cinephage logs in **Settings > Logs**
+- Check Cinephage logs in **Settings > Monitoring > Logs**
 - Ensure the download category is correct
 
 ### Slow download speeds

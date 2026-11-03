@@ -14,13 +14,13 @@ Welcome to the Cinephage FAQ! Find answers to common questions organized by cate
 
 | Category | Description | Questions |
 |----------|-------------|-----------|
-| [📋 General](/support/faq/general) | What is Cinephage, features, and capabilities | 6 |
+| [📋 General](/support/faq/general) | What is Cinephage, features, and capabilities | 5 |
 | [⚙️ Installation & Setup](/support/faq/installation) | System requirements, Docker, updates, backups | 7 |
 | [🔧 Configuration](/support/faq/configuration) | Environment variables, permissions, external access | 4 |
-| [📚 Library Management](/support/faq/library) | Importing, organizing, Root Folders | 6 |
+| [📚 Library Management](/support/faq/library) | Importing, organizing, Root Folders | 7 |
 | [⬇️ Downloading](/support/faq/downloading) | Quality profiles, indexers, automation | 6 |
 | [📺 Streaming & Live TV](/support/faq/streaming) | NZB Streaming, Live TV setup | 4 |
-| [🔍 Troubleshooting](/support/faq/troubleshooting) | Errors, logs, common issues, advanced topics | 10 |
+| [🔍 Troubleshooting](/support/faq/troubleshooting) | Errors, logs, common issues, advanced topics | 13 |
 
 ## FAQ Categories
 
@@ -82,7 +82,7 @@ Use your browser's search (Ctrl+F / Cmd+F) on any FAQ page to quickly find speci
 If you can't find what you're looking for:
 
 - 💬 **[Discord Community](https://discord.gg/scGCBTSWEt)** - Real-time help from the community
-- 🐛 **[GitHub Issues](https://github.com/MoldyTaint/Cinephage/issues)** - Bug reports and feature requests
+- 🐛 **[GitHub Issues](https://github.com/cinephage/cinephage/issues)** - Bug reports and feature requests
 - 📖 **[Documentation](/getting-started/)** - Browse all guides and tutorials
 - 🔧 **[Troubleshooting Guide](/guides/deploy/troubleshooting)** - Detailed troubleshooting steps
 

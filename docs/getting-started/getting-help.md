@@ -21,10 +21,10 @@ Join our community on Discord for real-time chat support:
 ### GitHub
 
 - **Issues** - Report bugs and request features
-  [GitHub Issues](https://github.com/MoldyTaint/Cinephage/issues)
+  [GitHub Issues](https://github.com/cinephage/cinephage/issues)
 
 - **Discussions** - Ask questions and share ideas
-  [GitHub Discussions](https://github.com/MoldyTaint/Cinephage/discussions)
+  [GitHub Discussions](https://github.com/cinephage/cinephage/discussions)
 
 ## Documentation
 
@@ -45,9 +45,9 @@ Join our community on Discord for real-time chat support:
 
 ### Configuration Help
 - [Configure Download Clients](../guides/configure/download-clients) - Set up download clients
-- [Set Up Quality Profiles](../guides/configure/quality-profiles) - Configure quality scoring
+- [Set Up Quality Profiles](../guides/configure/quality/quality-profiles) - Configure quality scoring
 - [Configure Indexers](../guides/configure/indexers) - Add indexers
 
 ### Community
-- [GitHub Discussions](https://github.com/MoldyTaint/Cinephage/discussions) - Ask questions and share ideas
+- [GitHub Discussions](https://github.com/cinephage/cinephage/discussions) - Ask questions and share ideas
 - [Discord](https://discord.gg/scGCBTSWEt) - Real-time chat support
